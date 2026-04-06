@@ -13,14 +13,12 @@ import {
   updateSquadLimitAction,
 } from "@/app/actions";
 import { requireAdmin } from "@/lib/auth";
-import { runLifecycleSweep } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { formatCurrency, formatDays } from "@/lib/utils";
 
 export default async function AdminPage() {
   await requireAdmin();
-  await runLifecycleSweep();
 
   const [settings, users, squads] = await Promise.all([
     getSettings(),

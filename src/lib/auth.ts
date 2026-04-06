@@ -118,7 +118,7 @@ export const authOptions: NextAuthOptions = {
             where: { id: persisted.id },
             include: { squad: true },
           });
-        });
+        }, { timeout: 15_000, maxWait: 10_000 });
 
         return {
           id: user.id,

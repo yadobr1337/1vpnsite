@@ -49,7 +49,7 @@ async function fetchManagedUser(userId: string, tx: Prisma.TransactionClient = d
 }
 
 export async function settleUserBilling(userId: string, tx: Prisma.TransactionClient = db, now = new Date()) {
-  const settings = await getSettings();
+  const settings = await getSettings(tx);
   const existing = await fetchManagedUser(userId, tx);
 
   if (!existing) {
@@ -219,7 +219,7 @@ export async function topUpBalance(params: {
       type: params.type ?? TransactionType.TOPUP,
       description: params.description,
     });
-  });
+  }, { timeout: 15_000, maxWait: 10_000 });
 
   await syncUserLifecycle(user.id);
 
@@ -234,9 +234,8 @@ export async function topUpBalance(params: {
 }
 
 export async function claimTrialDay(userId: string) {
-  const settings = await getSettings();
-
   const user = await db.$transaction(async (tx) => {
+    const settings = await getSettings(tx);
     const settled = await settleUserBilling(userId, tx);
     const trialAmount =
       settings.pricePerDayKopeks *
@@ -255,7 +254,7 @@ export async function claimTrialDay(userId: string) {
       description: "One-time free trial",
       markTrial: true,
     });
-  });
+  }, { timeout: 15_000, maxWait: 10_000 });
 
   await syncUserLifecycle(user.id);
   return user;
@@ -271,7 +270,7 @@ export async function adjustBalanceByAdmin(params: {
   }
 
   const user = await db.$transaction(async (tx) => {
-    const settings = await getSettings();
+    const settings = await getSettings(tx);
     const settled = await settleUserBilling(params.userId, tx);
 
     if (params.amountKopeks > 0) {
@@ -305,7 +304,7 @@ export async function adjustBalanceByAdmin(params: {
       },
       include: { squad: true },
     });
-  });
+  }, { timeout: 15_000, maxWait: 10_000 });
 
   await syncUserLifecycle(user.id);
   return user;
@@ -325,7 +324,7 @@ export async function setBanState(userId: string, isBanned: boolean) {
       },
       include: { squad: true },
     });
-  });
+  }, { timeout: 15_000, maxWait: 10_000 });
 
   await syncUserLifecycle(user.id);
   return user;
@@ -333,7 +332,10 @@ export async function setBanState(userId: string, isBanned: boolean) {
 
 export async function syncUserLifecycle(userId: string) {
   const settings = await getSettings();
-  const settled = await db.$transaction((tx) => settleUserBilling(userId, tx));
+  const settled = await db.$transaction((tx) => settleUserBilling(userId, tx), {
+    timeout: 15_000,
+    maxWait: 10_000,
+  });
   if (!settled.squad) {
     await ensureUserSquad(settled.id);
   }
@@ -476,7 +478,10 @@ export async function runLifecycleSweep() {
 
 export async function getUserOverview(userId: string) {
   const settings = await getSettings();
-  const user = await syncUserLifecycle(userId);
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    include: { squad: true },
+  });
 
   if (!user) {
     return null;
