@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/public-env";
 
 declare global {
   interface Window {

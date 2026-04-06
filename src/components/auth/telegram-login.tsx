@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/public-env";
 
 declare global {
   interface Window {

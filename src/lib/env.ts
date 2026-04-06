@@ -1,3 +1,4 @@
+import "server-only";
 import { z } from "zod";
 
 const serverSchema = z.object({
@@ -15,11 +16,6 @@ const serverSchema = z.object({
   PAYMENTS_AUTO_APPROVE: z.enum(["true", "false"]).optional(),
 });
 
-const clientSchema = z.object({
-  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: z.string().optional(),
-  TURNSTILE_SITE_KEY: z.string().optional(),
-});
-
 export const env = serverSchema.parse({
   DATABASE_URL: process.env.DATABASE_URL,
   NEXTAUTH_URL: process.env.NEXTAUTH_URL,
@@ -33,9 +29,4 @@ export const env = serverSchema.parse({
   REMNAWAVE_DEFAULT_INBOUND_UUIDS: process.env.REMNAWAVE_DEFAULT_INBOUND_UUIDS,
   CRON_SECRET: process.env.CRON_SECRET,
   PAYMENTS_AUTO_APPROVE: process.env.PAYMENTS_AUTO_APPROVE,
-});
-
-export const publicEnv = clientSchema.parse({
-  NEXT_PUBLIC_TELEGRAM_BOT_USERNAME: process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME,
-  TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY,
 });
