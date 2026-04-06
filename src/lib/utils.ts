@@ -1,0 +1,33 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+export function formatCurrency(valueKopeks: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 2,
+  }).format(valueKopeks / 100);
+}
+
+export function formatDays(days: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: days >= 10 ? 1 : 2,
+  }).format(days);
+}
+
+export function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function absoluteUrl(path: string) {
+  const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  return new URL(path, base).toString();
+}
