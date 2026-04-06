@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Shield, Sparkles, Wallet, Users, Bot, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,29 +8,6 @@ import { getAuthSession } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/site";
 import { formatCurrency } from "@/lib/utils";
-
-const features = [
-  {
-    icon: Wallet,
-    title: "Баланс вместо тарифа",
-    text: "Пополняете счет, сервис сам считает оплаченные дни по цене из админки.",
-  },
-  {
-    icon: Zap,
-    title: "Автоподписка",
-    text: "После оплаты система поднимает VPN-пользователя и выдает уникальную ссылку доступа.",
-  },
-  {
-    icon: Users,
-    title: "Сквады с лимитами",
-    text: "Новые пользователи автоматически распределяются по группам без переполнения.",
-  },
-  {
-    icon: Bot,
-    title: "Telegram-уведомления",
-    text: "Пополнение, окончание срока, предупреждение за сутки и удаление ссылки после grace-period.",
-  },
-];
 
 export default async function HomePage() {
   const [session, settings] = await Promise.all([getAuthSession(), getSettings()]);
@@ -48,6 +24,7 @@ export default async function HomePage() {
               {siteConfig.tagline}
             </span>
           </Link>
+
           <div className="flex items-center gap-3">
             {session?.user ? (
               <>
@@ -69,7 +46,7 @@ export default async function HomePage() {
           </div>
         </header>
 
-        <section className="relative grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1.1fr_0.9fr] lg:py-20">
+        <section className="relative grid flex-1 items-center gap-12 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
           <div className="space-y-8">
             <div className="space-y-4">
               <Badge className="stagger-in">Dark neon / tech panel</Badge>
@@ -77,26 +54,33 @@ export default async function HomePage() {
                 className="stagger-in max-w-4xl text-5xl font-black uppercase leading-none tracking-[0.08em] text-white sm:text-7xl"
                 data-delay="1"
               >
-                Гибкая подписка VPN без фиксированных тарифов
+                1VPN
               </h1>
-              <p className="stagger-in max-w-2xl text-lg leading-8 text-zinc-300" data-delay="2">
-                Баланс пополняется один раз, дни считаются автоматически, доступная ссылка
-                активируется мгновенно и управляется из единой админ-панели.
+              <p className="stagger-in max-w-xl text-lg leading-8 text-zinc-300" data-delay="2">
+                Приватный VPN-сервис с удобным личным кабинетом и гибким управлением доступом.
               </p>
             </div>
 
             <div className="stagger-in flex flex-wrap gap-3" data-delay="3">
-              <Link href={session?.user ? "/dashboard" : "/register"}>
-                <Button size="lg">{session?.user ? "Открыть кабинет" : "Подключиться к 1VPN"}</Button>
-              </Link>
-              <Link href="#features">
-                <Button variant="ghost" size="lg">
-                  Смотреть возможности
-                </Button>
-              </Link>
+              {session?.user ? (
+                <Link href="/dashboard">
+                  <Button size="lg">Открыть кабинет</Button>
+                </Link>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <Button variant="ghost" size="lg">
+                      Войти
+                    </Button>
+                  </Link>
+                  <Link href="/register">
+                    <Button size="lg">Создать аккаунт</Button>
+                  </Link>
+                </>
+              )}
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Card className="hero-glow">
                 <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Цена за день</p>
                 <p className="mt-3 text-3xl font-bold text-white">
@@ -106,10 +90,6 @@ export default async function HomePage() {
               <Card>
                 <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Пробный период</p>
                 <p className="mt-3 text-3xl font-bold text-white">{settings.trialDays} день</p>
-              </Card>
-              <Card>
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Удаление ссылки</p>
-                <p className="mt-3 text-3xl font-bold text-white">{settings.deletionGraceHours} ч</p>
               </Card>
             </div>
           </div>
@@ -136,63 +116,6 @@ export default async function HomePage() {
               </Card>
             </div>
           </div>
-        </section>
-
-        <section id="features" className="space-y-8 py-10">
-          <div className="space-y-3">
-            <Badge>Возможности сервиса</Badge>
-            <h2 className="text-3xl font-bold uppercase tracking-[0.08em] text-white sm:text-4xl">
-              От регистрации до удаления ссылки после истечения баланса
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {features.map((feature) => (
-              <Card key={feature.title} className="transition duration-300 hover:-translate-y-1">
-                <feature.icon className="h-8 w-8 text-cyan-300" />
-                <h3 className="mt-5 text-xl font-bold text-white">{feature.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-zinc-400">{feature.text}</p>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section className="grid gap-4 py-10 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <Badge>Как это работает</Badge>
-            <ol className="mt-6 space-y-5 text-sm leading-7 text-zinc-300">
-              <li>1. Пользователь регистрируется по email или через Telegram.</li>
-              <li>2. Пополняет баланс и сразу получает оплаченные дни по текущей ставке.</li>
-              <li>3. Бекенд создает VPN-пользователя в Remnawave и выдает ссылку подписки.</li>
-              <li>4. При окончании баланса доступ отключается, а через 20 часов ссылка удаляется.</li>
-            </ol>
-          </Card>
-          <Card className="relative overflow-hidden">
-            <div className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_center,rgba(93,214,255,0.18),transparent_70%)]" />
-            <div className="relative space-y-4">
-              <Badge>Security</Badge>
-              <h3 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-                Авторизация, CAPTCHA, биллинг, сквады, Telegram и Remnawave в одном контуре
-              </h3>
-              <p className="max-w-2xl text-sm leading-7 text-zinc-300">
-                Проект собран как единый full-stack сервис: Next.js фронтенд, Prisma ORM,
-                NextAuth, админ-панель, cron-процессы и сервисы для внешних интеграций.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <Shield className="h-6 w-6 text-cyan-300" />
-                  <p className="mt-3 text-sm font-semibold text-white">CAPTCHA + auth</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <Sparkles className="h-6 w-6 text-cyan-300" />
-                  <p className="mt-3 text-sm font-semibold text-white">Glitch branding</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <Bot className="h-6 w-6 text-cyan-300" />
-                  <p className="mt-3 text-sm font-semibold text-white">Telegram alerts</p>
-                </div>
-              </div>
-            </div>
-          </Card>
         </section>
       </div>
     </main>
