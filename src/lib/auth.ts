@@ -12,7 +12,7 @@ import { ensureUserSquad } from "@/lib/squads";
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
   pages: {
     signIn: "/login",
@@ -132,24 +132,41 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+
+      const userId = token.id ?? token.sub;
+      if (!userId) {
+        return token;
+      }
+
+      const freshUser = await db.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!freshUser) {
+        return token;
+      }
+
+      token.role = freshUser.role;
+      token.balanceKopeks = freshUser.balanceKopeks;
+      token.telegramId = freshUser.telegramId;
+      token.subscriptionUrl = freshUser.subscriptionUrl;
+
+      return token;
+    },
+    async session({ session, token }) {
       if (!session.user) {
         return session;
       }
 
-      const freshUser = await db.user.findUnique({
-        where: { id: user.id },
-      });
-
-      if (!freshUser) {
-        return session;
-      }
-
-      session.user.id = freshUser.id;
-      session.user.role = freshUser.role;
-      session.user.balanceKopeks = freshUser.balanceKopeks;
-      session.user.telegramId = freshUser.telegramId;
-      session.user.subscriptionUrl = freshUser.subscriptionUrl;
+      session.user.id = String(token.id ?? token.sub ?? "");
+      session.user.role = token.role ?? Role.USER;
+      session.user.balanceKopeks = token.balanceKopeks ?? 0;
+      session.user.telegramId = token.telegramId;
+      session.user.subscriptionUrl = token.subscriptionUrl;
 
       return session;
     },
