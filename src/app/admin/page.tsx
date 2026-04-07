@@ -255,6 +255,33 @@ export default async function AdminPage() {
             </p>
           </div>
 
+          <Card>
+            <Badge>Быстрое пополнение</Badge>
+            <form action={adjustUserBalanceAction} className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_180px_1fr_auto]">
+              <input
+                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                name="userId"
+                placeholder="Вставьте user ID"
+                required
+                type="text"
+              />
+              <input
+                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                defaultValue="100"
+                name="amount"
+                step="0.01"
+                type="number"
+              />
+              <input
+                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                defaultValue="Ручное пополнение из админки"
+                name="description"
+                type="text"
+              />
+              <PendingButton>Начислить баланс</PendingButton>
+            </form>
+          </Card>
+
           <div className="grid gap-4">
             {users.map((user) => {
               const effectiveDeviceCount = Math.max(
@@ -270,8 +297,8 @@ export default async function AdminPage() {
                 <Card key={user.id} className="space-y-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
-                      <p className="text-lg font-semibold text-white">{user.email}</p>
-                      <p className="text-sm text-zinc-400">ID: {user.id}</p>
+                      <p className="font-mono text-lg font-semibold text-white">{user.id}</p>
+                      <p className="text-sm text-zinc-400">{user.email}</p>
                       <p className="text-sm text-zinc-500">
                         Role: {user.role} • Сквад: {user.squad?.name ?? "не назначен"}
                       </p>

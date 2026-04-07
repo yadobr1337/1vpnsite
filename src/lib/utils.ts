@@ -14,9 +14,10 @@ export function formatCurrency(valueKopeks: number) {
 }
 
 export function formatDays(days: number) {
+  const wholeDays = Math.max(0, Math.floor(days));
   return new Intl.NumberFormat("ru-RU", {
-    maximumFractionDigits: days >= 10 ? 1 : 2,
-  }).format(days);
+    maximumFractionDigits: 0,
+  }).format(wholeDays);
 }
 
 export function slugify(input: string) {

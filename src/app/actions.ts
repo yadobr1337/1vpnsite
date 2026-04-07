@@ -1,5 +1,6 @@
 "use server";
 
+import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -50,6 +51,11 @@ function parseRequiredString(value: FormDataEntryValue | null) {
     throw new Error("Value is required.");
   }
   return parsed;
+}
+
+function parseOptionalString(value: FormDataEntryValue | null) {
+  const parsed = String(value ?? "").trim();
+  return parsed || null;
 }
 
 export async function topUpBalanceAction(formData: FormData) {
@@ -172,6 +178,74 @@ export async function updateOwnHwidAction(formData: FormData) {
   await syncUserLifecycle(session.user.id);
   revalidatePath("/admin");
   revalidatePath("/dashboard");
+}
+
+export async function updateOwnEmailAction(formData: FormData) {
+  const session = await requireUser();
+  const email = parseRequiredString(formData.get("email")).toLowerCase();
+
+  const existing = await db.user.findFirst({
+    where: {
+      email,
+      NOT: {
+        id: session.user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (existing) {
+    throw new Error("Email is already in use.");
+  }
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: {
+      email,
+    },
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/account");
+}
+
+export async function updateOwnPasswordAction(formData: FormData) {
+  const session = await requireUser();
+  const currentPassword = parseOptionalString(formData.get("currentPassword"));
+  const newPassword = parseRequiredString(formData.get("newPassword"));
+
+  if (newPassword.length < 8 || newPassword.length > 64) {
+    throw new Error("Password must contain 8-64 characters.");
+  }
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { passwordHash: true },
+  });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  if (user.passwordHash) {
+    if (!currentPassword) {
+      throw new Error("Current password is required.");
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      throw new Error("Current password is incorrect.");
+    }
+  }
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: {
+      passwordHash: await bcrypt.hash(newPassword, 12),
+    },
+  });
+
+  revalidatePath("/dashboard/account");
 }
 
 export async function runSyncNowAction() {

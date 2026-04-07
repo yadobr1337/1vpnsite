@@ -36,8 +36,35 @@ function computeRemainingDays(
   return balanceKopeks / (pricePerDayKopeks * normalizeDeviceCount(deviceCount));
 }
 
+function computeRemainingMs(
+  balanceKopeks: number,
+  pricePerDayKopeks: number,
+  deviceCount: number,
+) {
+  if (balanceKopeks <= 0 || pricePerDayKopeks <= 0) {
+    return 0;
+  }
+
+  return Number(
+    (BigInt(balanceKopeks) * BigInt(MS_IN_DAY)) /
+      (BigInt(pricePerDayKopeks) * BigInt(normalizeDeviceCount(deviceCount))),
+  );
+}
+
 function resolveHwidDeviceLimit(user: Pick<User, "hwidDeviceLimit">, defaultLimit: number) {
   return normalizeDeviceCount(user.hwidDeviceLimit ?? defaultLimit);
+}
+
+function computeSubscriptionExpireAt(
+  user: Pick<User, "balanceKopeks" | "lastBillingAt" | "hwidDeviceLimit">,
+  settings: { pricePerDayKopeks: number; defaultHwidDeviceLimit: number },
+  now = new Date(),
+) {
+  const deviceCount = resolveHwidDeviceLimit(user, settings.defaultHwidDeviceLimit);
+  const remainingMs = computeRemainingMs(user.balanceKopeks, settings.pricePerDayKopeks, deviceCount);
+  const anchor = user.lastBillingAt ?? now;
+
+  return new Date(anchor.getTime() + remainingMs);
 }
 
 async function fetchManagedUser(userId: string, tx: Prisma.TransactionClient = db) {
@@ -377,6 +404,7 @@ export async function syncUserLifecycle(userId: string) {
       user: managed,
       squadRemoteUuid: managed.squad.remnawaveInternalSquadUuid,
       hwidDeviceLimit: resolveHwidDeviceLimit(managed, settings.defaultHwidDeviceLimit),
+      expireAt: computeSubscriptionExpireAt(managed, settings),
     });
 
     if (managed.remnawaveUserUuid) {
@@ -409,7 +437,7 @@ export async function syncUserLifecycle(userId: string) {
         user: updated,
         type: NotificationType.EXPIRING_SOON,
         cycleKey: `${updated.billingCycle}:soon`,
-        message: `<b>1VPN</b>\nПодписка закончится меньше чем через сутки. Остаток: <b>${remainingDays.toFixed(2)} дн.</b>`,
+        message: `<b>1VPN</b>\nПодписка закончится меньше чем через сутки. Остаток: <b>${Math.max(0, Math.floor(remainingDays))} дн.</b>`,
       });
     }
 

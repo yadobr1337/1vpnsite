@@ -35,12 +35,16 @@ export default async function DashboardPage() {
           <div>
             <Badge>Client dashboard</Badge>
             <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-              {overview.user.email}
+              {overview.user.id}
             </h1>
+            <p className="mt-2 text-sm text-zinc-400">{overview.user.email}</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/">
               <Button variant="ghost">На главную</Button>
+            </Link>
+            <Link href="/dashboard/account">
+              <Button variant="ghost">Аккаунт</Button>
             </Link>
             {session.user.role === "ADMIN" ? (
               <Link href="/admin" className="inline-flex">
@@ -132,11 +136,6 @@ export default async function DashboardPage() {
                 {canClaimTrial ? "Получить 1 бесплатный день" : "Пробный день уже использован"}
               </PendingButton>
             </form>
-
-            <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-zinc-300">
-              Формула расчета: баланс / (цена за день × устройства). Поэтому остаток дней может
-              быть дробным.
-            </div>
 
             <p className="text-sm leading-7 text-zinc-400">
               При нулевом балансе ссылка отключается. Через {overview.settings.deletionGraceHours}{" "}

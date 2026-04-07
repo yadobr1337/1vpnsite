@@ -7,9 +7,7 @@ import {
   UpdateUserCommand,
 } from "@remnawave/backend-contract";
 import type { Squad, User } from "@prisma/client";
-import { addDays } from "date-fns";
 import { env } from "@/lib/env";
-import { DEFAULT_REMNAWAVE_EXPIRY_DAYS } from "@/lib/site";
 
 function isConfigured() {
   return Boolean(env.REMNAWAVE_BASE_URL && env.REMNAWAVE_API_TOKEN);
@@ -97,6 +95,7 @@ export async function provisionRemoteUser(params: {
   >;
   squadRemoteUuid?: string | null;
   hwidDeviceLimit?: number | null;
+  expireAt: Date;
 }) {
   if (!isConfigured()) {
     return null;
@@ -109,7 +108,7 @@ export async function provisionRemoteUser(params: {
       telegramId: params.user.telegramId ? Number(params.user.telegramId) : null,
       hwidDeviceLimit: params.hwidDeviceLimit ?? params.user.hwidDeviceLimit ?? undefined,
       activeInternalSquads: params.squadRemoteUuid ? [params.squadRemoteUuid] : undefined,
-      expireAt: addDays(new Date(), DEFAULT_REMNAWAVE_EXPIRY_DAYS).toISOString(),
+      expireAt: params.expireAt.toISOString(),
       status: "ACTIVE" as const,
     };
     UpdateUserCommand.RequestSchema.parse(body);
@@ -127,7 +126,7 @@ export async function provisionRemoteUser(params: {
     telegramId: params.user.telegramId ? Number(params.user.telegramId) : null,
     hwidDeviceLimit: params.hwidDeviceLimit ?? params.user.hwidDeviceLimit ?? undefined,
     activeInternalSquads: params.squadRemoteUuid ? [params.squadRemoteUuid] : undefined,
-    expireAt: addDays(new Date(), DEFAULT_REMNAWAVE_EXPIRY_DAYS).toISOString(),
+    expireAt: params.expireAt.toISOString(),
     status: "ACTIVE" as const,
   };
   CreateUserCommand.RequestSchema.parse(body);
