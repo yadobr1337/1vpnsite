@@ -345,6 +345,16 @@ export async function adjustBalanceByAdmin(params: {
   );
 
   await syncUserLifecycle(user.id);
+
+  if (params.amountKopeks > 0) {
+    await notifyUserOnce({
+      user,
+      type: NotificationType.TOPUP,
+      cycleKey: `${user.billingCycle}:admin:${user.updatedAt.toISOString()}`,
+      message: `<b>1VPN</b>\nАдминистратор пополнил баланс на <b>${(params.amountKopeks / 100).toFixed(2)} RUB</b>.`,
+    });
+  }
+
   return user;
 }
 
@@ -369,6 +379,16 @@ export async function setBanState(userId: string, isBanned: boolean) {
   );
 
   await syncUserLifecycle(user.id);
+
+  await notifyUserOnce({
+    user,
+    type: isBanned ? NotificationType.BANNED : NotificationType.UNBANNED,
+    cycleKey: `${user.billingCycle}:${isBanned ? "banned" : "unbanned"}:${user.updatedAt.toISOString()}`,
+    message: isBanned
+      ? "<b>1VPN</b>\nДоступ временно приостановлен администратором."
+      : "<b>1VPN</b>\nДоступ восстановлен. Подписка снова активна.",
+  });
+
   return user;
 }
 
