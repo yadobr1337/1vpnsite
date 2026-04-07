@@ -10,6 +10,9 @@
   --accent: #5dd6ff;
   --accent-2: #e7eef9;
   --danger: #ff7a7a;
+  --font-heading: "Orbitron", "Arial Black", "Segoe UI", sans-serif;
+  --font-body: "Space Grotesk", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
 @theme inline {
@@ -25,10 +28,13 @@
 
 html {
   scroll-behavior: smooth;
+  background-color: var(--background);
+  color-scheme: dark;
 }
 
 body {
   background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
   min-height: 100vh;
@@ -79,6 +85,12 @@ body::after {
   pointer-events: none;
   z-index: -2;
   opacity: 0.92;
+}
+
+#__next,
+body > div:first-child {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 a {
@@ -477,5 +489,43 @@ a {
     opacity: 0.35;
     filter: blur(8px);
     transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 767px), (pointer: coarse) {
+  body::before,
+  body::after {
+    animation: none;
+    opacity: 0.08;
+    inset: -10vmax;
+  }
+
+  .planet-network-canvas {
+    display: none;
+  }
+
+  .grid-overlay::before {
+    background-size: 42px 42px;
+    opacity: 0.45;
+  }
+
+  .hero-glow::after {
+    inset: -10%;
+    filter: blur(28px);
+  }
+
+  .card-lift:hover {
+    transform: none;
+    box-shadow: 0 24px 100px rgba(0, 0, 0, 0.35);
+    border-color: rgba(255, 255, 255, 0.1);
+    background-color: transparent;
+  }
+
+  .feature-card {
+    min-height: 220px;
+  }
+
+  .feature-card::after {
+    opacity: 0.5;
   }
 }

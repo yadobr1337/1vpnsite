@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Point3D = {
   x: number;
@@ -15,8 +15,8 @@ type Point2D = {
   scale: number;
 };
 
-const POINT_COUNT = 420;
-const ROTATION_SPEED_Y = 0.00035;
+const DESKTOP_POINT_COUNT = 320;
+const ROTATION_SPEED_Y = 0.00022;
 const TILT_X = -0.72;
 const TILT_Z = 0.42;
 
@@ -55,18 +55,34 @@ function rotateZ(point: Point3D, angle: number) {
 
 export function PlanetNetworkBackground() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [enabled] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
+    const isSmallScreen = window.matchMedia("(max-width: 767px)").matches;
+
+    return !reduceMotion && !isTouchDevice && !isSmallScreen;
+  });
 
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const canvasElement = canvasRef.current;
     if (!canvasElement) {
       return;
     }
-    const canvas = canvasElement;
 
+    const canvas = canvasElement;
     const contextValue = canvas.getContext("2d");
     if (!contextValue) {
       return;
     }
+
     const context = contextValue;
 
     let animationFrame = 0;
@@ -81,7 +97,7 @@ export function PlanetNetworkBackground() {
     function createSpherePoints() {
       points = [];
 
-      for (let index = 0; index < POINT_COUNT; index += 1) {
+      for (let index = 0; index < DESKTOP_POINT_COUNT; index += 1) {
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
 
@@ -94,11 +110,18 @@ export function PlanetNetworkBackground() {
     }
 
     function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
       centerX = width / 2;
-      centerY = height / 2;
-      sphereRadius = Math.min(width, height) * 1.02;
+      centerY = height * 0.32;
+      sphereRadius = Math.min(width, height) * 0.72;
       createSpherePoints();
     }
 
@@ -118,14 +141,13 @@ export function PlanetNetworkBackground() {
       const glow = context.createRadialGradient(
         centerX,
         centerY,
-        sphereRadius * 0.08,
+        sphereRadius * 0.06,
         centerX,
         centerY,
-        sphereRadius * 1.28,
+        sphereRadius * 1.1,
       );
-      glow.addColorStop(0, "rgba(93, 214, 255, 0.12)");
-      glow.addColorStop(0.35, "rgba(93, 214, 255, 0.06)");
-      glow.addColorStop(0.68, "rgba(93, 214, 255, 0.025)");
+      glow.addColorStop(0, "rgba(93, 214, 255, 0.08)");
+      glow.addColorStop(0.42, "rgba(93, 214, 255, 0.04)");
       glow.addColorStop(1, "rgba(93, 214, 255, 0)");
 
       context.fillStyle = glow;
@@ -151,9 +173,9 @@ export function PlanetNetworkBackground() {
           const deltaY = left.y - right.y;
           const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 
-          if (distance < sphereRadius * 0.22) {
+          if (distance < sphereRadius * 0.17) {
             const alpha =
-              (1 - distance / (sphereRadius * 0.22)) * 0.16 * Math.min(left.scale, right.scale);
+              (1 - distance / (sphereRadius * 0.17)) * 0.12 * Math.min(left.scale, right.scale);
 
             context.strokeStyle = `rgba(93, 214, 255, ${alpha})`;
             context.lineWidth = 1;
@@ -168,14 +190,14 @@ export function PlanetNetworkBackground() {
       projected
         .sort((left, right) => left.z - right.z)
         .forEach((point) => {
-          const size = 0.65 + point.scale * 1.9;
-          const alpha = 0.18 + point.scale * 0.52;
+          const size = 0.55 + point.scale * 1.5;
+          const alpha = 0.14 + point.scale * 0.38;
 
           context.beginPath();
           context.arc(point.x, point.y, size, 0, Math.PI * 2);
           context.fillStyle = `rgba(231, 238, 249, ${alpha})`;
-          context.shadowColor = "rgba(93, 214, 255, 0.6)";
-          context.shadowBlur = 10;
+          context.shadowColor = "rgba(93, 214, 255, 0.45)";
+          context.shadowBlur = 8;
           context.fill();
           context.shadowBlur = 0;
         });
@@ -192,7 +214,11 @@ export function PlanetNetworkBackground() {
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [enabled]);
+
+  if (!enabled) {
+    return null;
+  }
 
   return <canvas ref={canvasRef} aria-hidden className="planet-network-canvas" />;
 }
