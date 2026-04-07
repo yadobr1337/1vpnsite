@@ -11,7 +11,6 @@ import {
   deleteRemoteUser,
   disableRemoteUser,
   enableRemoteUser,
-  ensureRemoteSquad,
   provisionRemoteUser,
 } from "@/lib/remnawave";
 import { getSettings } from "@/lib/settings";
@@ -339,32 +338,13 @@ export async function syncUserLifecycle(userId: string) {
   if (!settled.squad) {
     await ensureUserSquad(settled.id);
   }
-  let managed = await db.user.findUnique({
+  const managed = await db.user.findUnique({
     where: { id: settled.id },
     include: { squad: true },
   });
 
   if (!managed) {
     return null;
-  }
-
-  const remoteSquadUuid =
-    managed.squad && !managed.squad.remnawaveInternalSquadUuid
-      ? await ensureRemoteSquad(managed.squad)
-      : managed.squad?.remnawaveInternalSquadUuid;
-
-  if (managed.squad && remoteSquadUuid && remoteSquadUuid !== managed.squad.remnawaveInternalSquadUuid) {
-    await db.squad.update({
-      where: { id: managed.squad.id },
-      data: { remnawaveInternalSquadUuid: remoteSquadUuid },
-    });
-    managed = await db.user.findUnique({
-      where: { id: settled.id },
-      include: { squad: true },
-    });
-    if (!managed) {
-      return null;
-    }
   }
 
   if (managed.isBanned) {
@@ -380,9 +360,22 @@ export async function syncUserLifecycle(userId: string) {
   }
 
   if (managed.balanceKopeks > 0) {
+    if (!managed.squad?.remnawaveInternalSquadUuid) {
+      return db.user.update({
+        where: { id: managed.id },
+        data: {
+          vpnProvisionState: "PENDING",
+          vpnStatusMessage: managed.squad
+            ? "Укажите UUID сквада Remnawave в админке"
+            : "Ожидает назначения в свободный сквад",
+        },
+        include: { squad: true },
+      });
+    }
+
     const remoteUser = await provisionRemoteUser({
       user: managed,
-      squadRemoteUuid: managed.squad?.remnawaveInternalSquadUuid ?? remoteSquadUuid,
+      squadRemoteUuid: managed.squad.remnawaveInternalSquadUuid,
       hwidDeviceLimit: resolveHwidDeviceLimit(managed, settings.defaultHwidDeviceLimit),
     });
 
@@ -472,7 +465,11 @@ export async function runLifecycleSweep() {
   });
 
   for (const user of users) {
-    await syncUserLifecycle(user.id);
+    try {
+      await syncUserLifecycle(user.id);
+    } catch (error) {
+      console.error(`[lifecycle] failed to sync user ${user.id}`, error);
+    }
   }
 }
 

@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { Role } from "@prisma/client";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -10,7 +9,6 @@ import { verifyTelegramAuth } from "@/lib/telegram";
 import { ensureUserSquad } from "@/lib/squads";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(db),
   session: {
     strategy: "jwt",
   },

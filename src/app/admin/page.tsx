@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { Role } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
 import {
@@ -9,8 +11,8 @@ import {
   runSyncNowAction,
   toggleBanAction,
   updateSettingsAction,
-  updateUserHwidAction,
   updateSquadLimitAction,
+  updateUserHwidAction,
 } from "@/app/actions";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -45,15 +47,25 @@ export default async function AdminPage() {
     <main className="dashboard-shell min-h-screen px-6 py-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <header className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div className="space-y-4">
             <Badge>Admin console</Badge>
-            <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-              Управление 1VPN
-            </h1>
+            <div>
+              <h1 className="text-3xl font-bold uppercase tracking-[0.08em] text-white">
+                Управление 1VPN
+              </h1>
+              <p className="mt-2 text-sm text-zinc-400">
+                Сквады привязываются к уже созданным группам Remnawave по UUID.
+              </p>
+            </div>
           </div>
-          <form action={runSyncNowAction}>
-            <PendingButton>Запустить синхронизацию сейчас</PendingButton>
-          </form>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard" className="inline-flex">
+              <Button variant="ghost">Вернуться в кабинет</Button>
+            </Link>
+            <form action={runSyncNowAction}>
+              <PendingButton>Запустить синхронизацию</PendingButton>
+            </form>
+          </div>
         </header>
 
         <section className="grid gap-4 md:grid-cols-3">
@@ -106,7 +118,7 @@ export default async function AdminPage() {
                 />
               </label>
               <label className="grid gap-2 text-sm text-zinc-300">
-                HWID по умолчанию, устройств
+                Устройства по умолчанию
                 <input
                   className="h-12 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
                   defaultValue={settings.defaultHwidDeviceLimit}
@@ -143,14 +155,27 @@ export default async function AdminPage() {
           <Card>
             <Badge>Сквады</Badge>
             <h2 className="mt-4 text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Группы пользователей
+              Привязка к Remnawave
             </h2>
-            <form action={createSquadAction} className="mt-6 grid gap-4 md:grid-cols-[1fr_180px_auto]">
+            <p className="mt-3 text-sm leading-7 text-zinc-400">
+              Сквад создается в панели, а здесь вы только добавляете его UUID, лимит пользователей
+              и удобное название.
+            </p>
+
+            <form
+              action={createSquadAction}
+              className="mt-6 grid gap-4 xl:grid-cols-[1.1fr_1fr_180px_auto]"
+            >
+              <input
+                className="h-12 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                name="remnawaveInternalSquadUuid"
+                placeholder="UUID сквада Remnawave"
+                required
+              />
               <input
                 className="h-12 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
                 name="name"
-                placeholder="Название сквада"
-                required
+                placeholder="Название для админки"
               />
               <input
                 className="h-12 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
@@ -159,41 +184,61 @@ export default async function AdminPage() {
                 required
                 type="number"
               />
-              <PendingButton>Создать</PendingButton>
+              <PendingButton>Добавить сквад</PendingButton>
             </form>
+
             <div className="mt-6 space-y-3">
-              {squads.map((squad) => (
-                <div key={squad.id} className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <p className="text-lg font-semibold text-white">{squad.name}</p>
-                      <p className="text-sm text-zinc-400">
-                        {squad._count.users}/{squad.memberLimit} пользователей
-                      </p>
-                    </div>
-                    <div className="flex gap-3">
-                      <form action={updateSquadLimitAction} className="flex items-center gap-3">
-                        <input type="hidden" name="squadId" value={squad.id} />
-                        <input
-                          className="h-11 w-28 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                          name="memberLimit"
-                          type="number"
-                          defaultValue={squad.memberLimit}
-                        />
-                        <label className="flex items-center gap-2 text-sm text-zinc-300">
-                          <input defaultChecked={squad.isActive} name="isActive" type="checkbox" />
-                          active
-                        </label>
+              {squads.length ? (
+                squads.map((squad) => (
+                  <div key={squad.id} className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                    <form action={updateSquadLimitAction} className="grid gap-3 xl:grid-cols-[1fr_1.2fr_160px_auto_auto]">
+                      <input type="hidden" name="squadId" value={squad.id} />
+                      <input
+                        className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                        defaultValue={squad.name}
+                        name="name"
+                        placeholder="Название"
+                      />
+                      <input
+                        className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                        defaultValue={squad.remnawaveInternalSquadUuid ?? ""}
+                        name="remnawaveInternalSquadUuid"
+                        placeholder="UUID сквада"
+                        required
+                      />
+                      <input
+                        className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                        defaultValue={squad.memberLimit}
+                        name="memberLimit"
+                        type="number"
+                      />
+                      <label className="flex items-center gap-2 text-sm text-zinc-300">
+                        <input defaultChecked={squad.isActive} name="isActive" type="checkbox" />
+                        active
+                      </label>
+                      <div className="flex gap-3">
                         <PendingButton variant="ghost">Обновить</PendingButton>
-                      </form>
-                      <form action={deleteSquadAction}>
-                        <input type="hidden" name="squadId" value={squad.id} />
-                        <PendingButton variant="danger">Удалить</PendingButton>
-                      </form>
-                    </div>
+                        <button
+                          formAction={deleteSquadAction}
+                          name="squadId"
+                          value={squad.id}
+                          className="inline-flex h-11 items-center justify-center rounded-full border border-red-400/35 bg-red-500/10 px-5 text-sm font-medium text-red-100 transition duration-300 hover:border-red-400/60 hover:bg-red-500/20"
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                    </form>
+                    <p className="mt-3 text-sm text-zinc-400">
+                      Занято {squad._count.users} из {squad.memberLimit} мест
+                    </p>
                   </div>
+                ))
+              ) : (
+                <div className="rounded-3xl border border-dashed border-white/10 bg-black/20 p-5 text-sm text-zinc-400">
+                  Сквады еще не добавлены. Пока что пользователи будут создаваться без назначения, а
+                  выдача VPN останется в ожидании.
                 </div>
-              ))}
+              )}
             </div>
           </Card>
         </section>
@@ -202,17 +247,23 @@ export default async function AdminPage() {
           <div className="space-y-3">
             <Badge>Пользователи</Badge>
             <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Баланс, дни, ссылка, бан и ручные начисления
+              Баланс, устройства и статус доступа
             </h2>
+            <p className="text-sm text-zinc-400">
+              Пополнение выполняется прямо в карточке пользователя. Для поиска и идентификации
+              отображается локальный ID.
+            </p>
           </div>
 
           <div className="grid gap-4">
             {users.map((user) => {
+              const effectiveDeviceCount = Math.max(
+                1,
+                user.hwidDeviceLimit ?? settings.defaultHwidDeviceLimit,
+              );
               const remainingDays =
                 settings.pricePerDayKopeks > 0
-                  ? user.balanceKopeks /
-                    (settings.pricePerDayKopeks *
-                      Math.max(1, user.hwidDeviceLimit ?? settings.defaultHwidDeviceLimit))
+                  ? user.balanceKopeks / (settings.pricePerDayKopeks * effectiveDeviceCount)
                   : 0;
 
               return (
@@ -220,18 +271,23 @@ export default async function AdminPage() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                       <p className="text-lg font-semibold text-white">{user.email}</p>
-                      <p className="text-sm text-zinc-400">
-                        {user.role} • Сквад: {user.squad?.name ?? "нет"} • {user.vpnProvisionState}
+                      <p className="text-sm text-zinc-400">ID: {user.id}</p>
+                      <p className="text-sm text-zinc-500">
+                        Role: {user.role} • Сквад: {user.squad?.name ?? "не назначен"}
                       </p>
                       <p className="text-sm text-zinc-500">
-                        {user.subscriptionUrl ? user.subscriptionUrl : "Ссылка еще не сгенерирована"}
+                        Remnawave user UUID: {user.remnawaveUserUuid ?? "еще не создан"}
+                      </p>
+                      <p className="text-sm text-zinc-500">
+                        {user.subscriptionUrl ?? "Ссылка подписки еще не сгенерирована"}
                       </p>
                     </div>
                     <div className="grid gap-2 text-right text-sm text-zinc-300">
                       <p>Баланс: {formatCurrency(user.balanceKopeks)}</p>
-                      <p>Дней: {formatDays(remainingDays)}</p>
-                      <p>HWID: {user.hwidDeviceLimit ?? settings.defaultHwidDeviceLimit}</p>
+                      <p>Остаток: {formatDays(remainingDays)} дн.</p>
+                      <p>Устройства: {effectiveDeviceCount}</p>
                       <p>{user.isBanned ? "Бан активен" : "Аккаунт активен"}</p>
+                      <p>VPN: {user.vpnStatusMessage ?? user.vpnProvisionState}</p>
                     </div>
                   </div>
 
@@ -255,7 +311,7 @@ export default async function AdminPage() {
                       />
                       <input
                         className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                        defaultValue="Admin balance adjustment"
+                        defaultValue="Ручное пополнение из админки"
                         name="description"
                         type="text"
                       />
@@ -272,7 +328,7 @@ export default async function AdminPage() {
                       placeholder={`По умолчанию: ${settings.defaultHwidDeviceLimit}`}
                       type="number"
                     />
-                    <PendingButton variant="ghost">Обновить HWID</PendingButton>
+                    <PendingButton variant="ghost">Обновить устройства</PendingButton>
                   </form>
                 </Card>
               );

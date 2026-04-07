@@ -9,9 +9,10 @@ import {
   claimTrialDay,
   runLifecycleSweep,
   setBanState,
+  syncUserLifecycle,
   topUpBalance,
 } from "@/lib/billing";
-import { createSquad, deleteSquad } from "@/lib/squads";
+import { createSquad, deleteSquad, updateSquad } from "@/lib/squads";
 
 function parseKopeks(value: FormDataEntryValue | null) {
   const amount = Number(String(value ?? "0").replace(",", "."));
@@ -39,6 +40,14 @@ function parseRequiredPositiveInteger(value: FormDataEntryValue | null) {
   const parsed = Number(String(value ?? "").trim());
   if (!Number.isInteger(parsed) || parsed < 1) {
     throw new Error("Invalid integer value.");
+  }
+  return parsed;
+}
+
+function parseRequiredString(value: FormDataEntryValue | null) {
+  const parsed = String(value ?? "").trim();
+  if (!parsed) {
+    throw new Error("Value is required.");
   }
   return parsed;
 }
@@ -93,18 +102,19 @@ export async function createSquadAction(formData: FormData) {
   await createSquad({
     name: String(formData.get("name") ?? ""),
     memberLimit: parseRequiredPositiveInteger(formData.get("memberLimit")),
+    remnawaveInternalSquadUuid: parseRequiredString(formData.get("remnawaveInternalSquadUuid")),
   });
   revalidatePath("/admin");
 }
 
 export async function updateSquadLimitAction(formData: FormData) {
   await requireAdmin();
-  await db.squad.update({
-    where: { id: String(formData.get("squadId")) },
-    data: {
-      memberLimit: parseRequiredPositiveInteger(formData.get("memberLimit")),
-      isActive: String(formData.get("isActive")) === "on",
-    },
+  await updateSquad({
+    squadId: String(formData.get("squadId")),
+    name: String(formData.get("name") ?? ""),
+    memberLimit: parseRequiredPositiveInteger(formData.get("memberLimit")),
+    isActive: String(formData.get("isActive")) === "on",
+    remnawaveInternalSquadUuid: parseRequiredString(formData.get("remnawaveInternalSquadUuid")),
   });
   revalidatePath("/admin");
 }
@@ -135,15 +145,31 @@ export async function adjustUserBalanceAction(formData: FormData) {
 
 export async function updateUserHwidAction(formData: FormData) {
   await requireAdmin();
+  const userId = String(formData.get("userId"));
 
   await db.user.update({
-    where: { id: String(formData.get("userId")) },
+    where: { id: userId },
     data: {
       hwidDeviceLimit: parseOptionalInteger(formData.get("hwidDeviceLimit")),
     },
   });
 
-  await runLifecycleSweep();
+  await syncUserLifecycle(userId);
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+}
+
+export async function updateOwnHwidAction(formData: FormData) {
+  const session = await requireUser();
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: {
+      hwidDeviceLimit: parseRequiredPositiveInteger(formData.get("hwidDeviceLimit")),
+    },
+  });
+
+  await syncUserLifecycle(session.user.id);
   revalidatePath("/admin");
   revalidatePath("/dashboard");
 }

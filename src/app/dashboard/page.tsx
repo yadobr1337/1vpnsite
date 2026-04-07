@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
 import { LogoutButton } from "@/components/logout-button";
 import { CopyButton } from "@/components/copy-button";
-import { claimTrialAction, topUpBalanceAction } from "@/app/actions";
+import { claimTrialAction, topUpBalanceAction, updateOwnHwidAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -37,12 +37,11 @@ export default async function DashboardPage() {
             <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
               {overview.user.email}
             </h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              Сквад: {overview.user.squad?.name ?? "Не назначен"} • Статус:{" "}
-              {overview.user.isBanned ? "Заморожен" : overview.user.vpnProvisionState}
-            </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link href="/">
+              <Button variant="ghost">На главную</Button>
+            </Link>
             {session.user.role === "ADMIN" ? (
               <Link href="/admin" className="inline-flex">
                 <Button variant="ghost">Админ-панель</Button>
@@ -52,7 +51,7 @@ export default async function DashboardPage() {
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card>
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Баланс</p>
             <p className="mt-3 text-3xl font-bold text-white">
@@ -70,11 +69,13 @@ export default async function DashboardPage() {
             </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">VPN</p>
-            <p className="mt-3 text-xl font-bold text-white">{overview.user.vpnStatusMessage ?? "Pending"}</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Статус VPN</p>
+            <p className="mt-3 text-lg font-bold text-white">
+              {overview.user.vpnStatusMessage ?? "Ожидает активации"}
+            </p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">HWID / устройства</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Устройства</p>
             <p className="mt-3 text-3xl font-bold text-white">{overview.effectiveHwidDeviceLimit}</p>
           </Card>
         </section>
@@ -96,8 +97,8 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm leading-7 text-zinc-400">
-                После первого пополнения бекенд создаст VPN-пользователя в Remnawave и выдаст
-                уникальную ссылку подписки.
+                После пополнения баланс активирует VPN-доступ. Если сквад еще не назначен или не
+                привязан к UUID Remnawave, ссылка появится после синхронизации.
               </p>
             )}
           </Card>
@@ -132,25 +133,37 @@ export default async function DashboardPage() {
               </PendingButton>
             </form>
 
+            <div className="rounded-3xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-zinc-300">
+              Формула расчета: баланс / (цена за день × устройства). Поэтому остаток дней может
+              быть дробным.
+            </div>
+
             <p className="text-sm leading-7 text-zinc-400">
-              При нулевом балансе ссылка отключается. Через {overview.settings.deletionGraceHours} часов
-              после окончания доступа она удаляется, если баланс не пополнен.
+              При нулевом балансе ссылка отключается. Через {overview.settings.deletionGraceHours}{" "}
+              часов после окончания доступа она удаляется, если баланс не пополнен.
             </p>
           </Card>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <Card>
-            <Badge>Telegram</Badge>
+            <Badge>Устройства</Badge>
             <h2 className="mt-4 text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Уведомления
+              Количество устройств
             </h2>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-300">
-              <p>Пополнение баланса.</p>
-              <p>Предупреждение за 1 день до окончания.</p>
-              <p>Окончание подписки.</p>
-              <p>Предупреждение об удалении ссылки.</p>
-            </div>
+            <p className="mt-4 text-sm leading-7 text-zinc-300">
+              Изменение количества устройств сразу обновляет расчет дней и лимит в Remnawave.
+            </p>
+            <form action={updateOwnHwidAction} className="mt-5 grid gap-3 md:grid-cols-[220px_auto]">
+              <input
+                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                defaultValue={overview.effectiveHwidDeviceLimit}
+                min="1"
+                name="hwidDeviceLimit"
+                type="number"
+              />
+              <PendingButton variant="ghost">Обновить устройства</PendingButton>
+            </form>
             <p className="mt-6 text-sm text-zinc-400">
               Telegram ID: {overview.user.telegramId ? overview.user.telegramId : "не привязан"}
             </p>

@@ -40,7 +40,7 @@ export async function ensureUserSquad(userId: string, tx: Prisma.TransactionClie
 
   const squad = await findAvailableSquad(tx);
   if (!squad) {
-    throw new Error("No active squad has free capacity.");
+    return null;
   }
 
   await tx.user.update({
@@ -51,13 +51,50 @@ export async function ensureUserSquad(userId: string, tx: Prisma.TransactionClie
   return squad;
 }
 
-export async function createSquad(input: { name: string; memberLimit: number }) {
+function buildSquadName(uuid: string, name?: string) {
+  const trimmedName = name?.trim();
+  if (trimmedName) {
+    return trimmedName;
+  }
+
+  return `Squad ${uuid.slice(0, 8)}`;
+}
+
+export async function createSquad(input: {
+  name?: string;
+  memberLimit: number;
+  remnawaveInternalSquadUuid: string;
+}) {
+  const name = buildSquadName(input.remnawaveInternalSquadUuid, input.name);
+
   return db.squad.create({
     data: {
-      name: input.name,
-      slug: slugify(input.name),
+      name,
+      slug: slugify(`${name}-${input.remnawaveInternalSquadUuid.slice(0, 8)}`),
       memberLimit: input.memberLimit,
       position: (await db.squad.count()) + 1,
+      remnawaveInternalSquadUuid: input.remnawaveInternalSquadUuid,
+    },
+  });
+}
+
+export async function updateSquad(input: {
+  squadId: string;
+  name?: string;
+  memberLimit: number;
+  isActive: boolean;
+  remnawaveInternalSquadUuid: string;
+}) {
+  const name = buildSquadName(input.remnawaveInternalSquadUuid, input.name);
+
+  return db.squad.update({
+    where: { id: input.squadId },
+    data: {
+      name,
+      slug: slugify(`${name}-${input.remnawaveInternalSquadUuid.slice(0, 8)}`),
+      memberLimit: input.memberLimit,
+      isActive: input.isActive,
+      remnawaveInternalSquadUuid: input.remnawaveInternalSquadUuid,
     },
   });
 }

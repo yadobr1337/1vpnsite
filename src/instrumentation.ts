@@ -12,6 +12,10 @@ export async function register() {
 
   globalJobs.__oneVpnCronStarted = true;
   cron.schedule("*/10 * * * *", async () => {
-    await runLifecycleSweep();
+    try {
+      await runLifecycleSweep();
+    } catch (error) {
+      console.error("[cron] lifecycle sweep failed", error);
+    }
   });
 }

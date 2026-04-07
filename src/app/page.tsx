@@ -11,6 +11,8 @@ import { formatCurrency } from "@/lib/utils";
 
 export default async function HomePage() {
   const [session, settings] = await Promise.all([getAuthSession(), getSettings()]);
+  const offerUrl = process.env.NEXT_PUBLIC_OFFER_URL;
+  const rulesUrl = process.env.NEXT_PUBLIC_RULES_URL;
 
   return (
     <main className="grid-overlay overflow-hidden">
@@ -57,7 +59,8 @@ export default async function HomePage() {
                 1VPN
               </h1>
               <p className="stagger-in max-w-xl text-lg leading-8 text-zinc-300" data-delay="2">
-                Приватный VPN-сервис с удобным личным кабинетом и гибким управлением доступом.
+                Приватный VPN-сервис с быстрым доступом, личным кабинетом и гибким управлением
+                устройствами.
               </p>
             </div>
 
@@ -115,6 +118,56 @@ export default async function HomePage() {
                 </div>
               </Card>
             </div>
+          </div>
+        </section>
+
+        <section className="pb-10">
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="space-y-5">
+              <Badge>Коротко о сервисе</Badge>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm font-semibold text-white">Протоколы</p>
+                  <p className="mt-2 text-sm leading-7 text-zinc-400">
+                    Поддержка современных конфигураций Remnawave и быстрая выдача подписочной ссылки.
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm font-semibold text-white">Скорость</p>
+                  <p className="mt-2 text-sm leading-7 text-zinc-400">
+                    Минимум действий для подключения и быстрый доступ к конфигу из кабинета.
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm font-semibold text-white">Устройства</p>
+                  <p className="mt-2 text-sm leading-7 text-zinc-400">
+                    Количество устройств регулируется в кабинете, а лимит сразу уходит в панель.
+                  </p>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="space-y-5">
+              <Badge>Документы</Badge>
+              <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
+                Оферта и правила
+              </h2>
+              <p className="text-sm leading-7 text-zinc-400">
+                Ссылки берутся из env-переменных и открываются как отдельные документы.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                {offerUrl ? (
+                  <Link href={offerUrl} target="_blank" rel="noreferrer">
+                    <Button variant="ghost">Оферта</Button>
+                  </Link>
+                ) : null}
+                {rulesUrl ? (
+                  <Link href={rulesUrl} target="_blank" rel="noreferrer">
+                    <Button>Правила сервиса</Button>
+                  </Link>
+                ) : null}
+              </div>
+            </Card>
           </div>
         </section>
       </div>
