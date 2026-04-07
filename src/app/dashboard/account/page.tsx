@@ -39,9 +39,14 @@ export default async function DashboardAccountPage() {
             </h1>
             <p className="mt-2 text-sm text-zinc-400">{user.email}</p>
           </div>
-          <Link href="/dashboard">
-            <Button variant="ghost">Назад</Button>
-          </Link>
+          <div className="flex gap-3">
+            <Link href="/">
+              <Button variant="ghost">Главная</Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button variant="ghost">Назад</Button>
+            </Link>
+          </div>
         </header>
 
         <section className="grid gap-4 lg:grid-cols-2">
