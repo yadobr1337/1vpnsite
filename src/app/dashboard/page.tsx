@@ -3,8 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
-import { LogoutButton } from "@/components/logout-button";
 import { CopyButton } from "@/components/copy-button";
+import { DeviceStepperForm } from "@/components/device-stepper-form";
 import { claimTrialAction, topUpBalanceAction, updateOwnHwidAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { getUserOverview } from "@/lib/billing";
@@ -19,7 +19,12 @@ export default async function DashboardPage() {
     getUserOverview(session.user.id),
     ensureUserPublicId(session.user.id),
     db.balanceTransaction.findMany({
-      where: { userId: session.user.id },
+      where: {
+        userId: session.user.id,
+        amountKopeks: {
+          gt: 0,
+        },
+      },
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
@@ -33,7 +38,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="dashboard-shell min-h-screen px-6 py-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <header className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge>Client dashboard</Badge>
@@ -43,22 +48,18 @@ export default async function DashboardPage() {
             <p className="mt-2 text-sm text-zinc-400">{overview.user.email}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/">
-              <Button variant="ghost">На главную</Button>
-            </Link>
             <Link href="/dashboard/account">
               <Button variant="ghost">Аккаунт</Button>
             </Link>
             {session.user.role === "ADMIN" ? (
-              <Link href="/admin" className="inline-flex">
-                <Button variant="ghost">Админ-панель</Button>
+              <Link href="/admin">
+                <Button variant="ghost">Админ</Button>
               </Link>
             ) : null}
-            <LogoutButton />
           </div>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Баланс</p>
             <p className="mt-3 text-3xl font-bold text-white">
@@ -70,26 +71,92 @@ export default async function DashboardPage() {
             <p className="mt-3 text-3xl font-bold text-white">{formatDays(overview.remainingDays)}</p>
           </Card>
           <Card>
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Цена за день</p>
-            <p className="mt-3 text-3xl font-bold text-white">
-              {formatCurrency(overview.settings.pricePerDayKopeks)}
-            </p>
-          </Card>
-          <Card>
             <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Статус VPN</p>
-            <p className="mt-3 text-lg font-bold text-white">
-              {overview.user.vpnStatusMessage ?? "Ожидает активации"}
+            <p className="mt-3 text-xl font-bold text-white">
+              {overview.user.balanceKopeks > 0 ? "Активный" : "Ожидает оплаты"}
             </p>
-          </Card>
-          <Card>
-            <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Устройства</p>
-            <p className="mt-3 text-3xl font-bold text-white">{overview.effectiveHwidDeviceLimit}</p>
           </Card>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
           <Card className="space-y-5">
-            <Badge>Subscription</Badge>
+            <Badge>Пополнение</Badge>
+            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
+              Баланс
+            </h2>
+            <form action={topUpBalanceAction} className="flex flex-col gap-3 sm:flex-row">
+              <input
+                className="h-12 flex-1 rounded-2xl border border-white/10 bg-black/30 px-4 text-white outline-none"
+                defaultValue="199"
+                min="10"
+                name="amount"
+                step="1"
+                type="number"
+              />
+              <PendingButton>
+                {env.PAYMENTS_AUTO_APPROVE === "true"
+                  ? "Пополнить баланс"
+                  : "Платежный провайдер не подключен"}
+              </PendingButton>
+            </form>
+
+            {canClaimTrial ? (
+              <form action={claimTrialAction}>
+                <PendingButton className="w-full" variant="ghost">
+                  Получить 1 бесплатный день
+                </PendingButton>
+              </form>
+            ) : null}
+
+            <div className="space-y-3">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                История пополнений
+              </p>
+              {transactions.length ? (
+                <div className="space-y-3">
+                  {transactions.map((transaction) => (
+                    <div
+                      key={transaction.id}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-white">{transaction.description}</p>
+                        <p className="text-xs text-zinc-500">
+                          {transaction.createdAt.toLocaleString("ru-RU")}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-cyan-200">
+                        +{formatCurrency(transaction.amountKopeks)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-400">
+                  Пополнений пока нет.
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <Card className="space-y-5">
+            <Badge>Устройства</Badge>
+            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
+              Количество устройств
+            </h2>
+            <p className="text-sm leading-7 text-zinc-400">
+              Лимит устройств сразу влияет на расчет дней и обновляется в Remnawave.
+            </p>
+            <DeviceStepperForm
+              action={updateOwnHwidAction}
+              currentValue={overview.effectiveHwidDeviceLimit}
+            />
+          </Card>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card className="space-y-5">
+            <Badge>Подписка</Badge>
             <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
               Ссылка доступа
             </h2>
@@ -104,102 +171,20 @@ export default async function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm leading-7 text-zinc-400">
-                После пополнения баланс активирует VPN-доступ. Если сквад еще не назначен или не
-                привязан к UUID Remnawave, ссылка появится после синхронизации.
+                Ссылка появится после оплаты и успешной синхронизации с Remnawave.
               </p>
             )}
           </Card>
 
-          <Card className="space-y-5">
-            <Badge>Пополнение</Badge>
-            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Управление балансом
-            </h2>
-            <form action={topUpBalanceAction} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-zinc-300">Сумма пополнения, RUB</label>
-                <input
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-white outline-none"
-                  defaultValue="199"
-                  min="10"
-                  name="amount"
-                  step="0.01"
-                  type="number"
-                />
-              </div>
-              <PendingButton className="w-full">
-                {env.PAYMENTS_AUTO_APPROVE === "true"
-                  ? "Мгновенно пополнить баланс"
-                  : "Платежный провайдер не подключен"}
-              </PendingButton>
-            </form>
-
-            <form action={claimTrialAction}>
-              <PendingButton className="w-full" variant="ghost" disabled={!canClaimTrial}>
-                {canClaimTrial ? "Получить 1 бесплатный день" : "Пробный день уже использован"}
-              </PendingButton>
-            </form>
-
-            <p className="text-sm leading-7 text-zinc-400">
-              При нулевом балансе ссылка отключается. Через {overview.settings.deletionGraceHours}{" "}
-              часов после окончания доступа она удаляется, если баланс не пополнен.
-            </p>
-          </Card>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <Card>
-            <Badge>Устройства</Badge>
-            <h2 className="mt-4 text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Количество устройств
-            </h2>
-            <p className="mt-4 text-sm leading-7 text-zinc-300">
-              Изменение количества устройств сразу обновляет расчет дней и лимит в Remnawave.
-            </p>
-            <form action={updateOwnHwidAction} className="mt-5 grid gap-3 md:grid-cols-[220px_auto]">
-              <input
-                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                defaultValue={overview.effectiveHwidDeviceLimit}
-                min="1"
-                name="hwidDeviceLimit"
-                type="number"
-              />
-              <PendingButton variant="ghost">Обновить устройства</PendingButton>
-            </form>
-            <p className="mt-6 text-sm text-zinc-400">
-              Telegram ID: {overview.user.telegramId ? overview.user.telegramId : "не привязан"}
-            </p>
-          </Card>
-
-          <Card>
-            <Badge>История операций</Badge>
-            <div className="mt-5 space-y-3">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-white">{transaction.description}</p>
-                    <p className="text-xs uppercase tracking-[0.25em] text-zinc-500">
-                      {transaction.type}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={`text-sm font-semibold ${
-                        transaction.amountKopeks >= 0 ? "text-cyan-200" : "text-zinc-200"
-                      }`}
-                    >
-                      {transaction.amountKopeks >= 0 ? "+" : ""}
-                      {formatCurrency(transaction.amountKopeks)}
-                    </p>
-                    <p className="text-xs text-zinc-500">
-                      {transaction.createdAt.toLocaleString("ru-RU")}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <Badge>Инфо</Badge>
+            <div className="mt-4 space-y-2 text-sm text-zinc-300">
+              <p>Цена за день: {formatCurrency(overview.settings.pricePerDayKopeks)}</p>
+              <p>Telegram ID: {overview.user.telegramId ?? "не привязан"}</p>
+              <p>
+                При нулевом балансе ссылка отключается и удаляется через{" "}
+                {overview.settings.deletionGraceHours} часов.
+              </p>
             </div>
           </Card>
         </section>

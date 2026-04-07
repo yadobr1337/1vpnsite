@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
+import { LogoutButton } from "@/components/logout-button";
 import { updateOwnEmailAction, updateOwnPasswordAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -39,7 +40,7 @@ export default async function DashboardAccountPage() {
             <p className="mt-2 text-sm text-zinc-400">{user.email}</p>
           </div>
           <Link href="/dashboard">
-            <Button variant="ghost">Вернуться в кабинет</Button>
+            <Button variant="ghost">Назад</Button>
           </Link>
         </header>
 
@@ -96,10 +97,13 @@ export default async function DashboardAccountPage() {
           <Badge>Info</Badge>
           <div className="mt-4 space-y-2 text-sm text-zinc-300">
             <p>Короткий ID: {publicId}</p>
-            <p>Internal ID: {user.id}</p>
             <p>Telegram ID: {user.telegramId ?? "не привязан"}</p>
           </div>
         </Card>
+
+        <div className="flex justify-end">
+          <LogoutButton />
+        </div>
       </div>
     </main>
   );
