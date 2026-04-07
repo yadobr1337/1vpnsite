@@ -14,44 +14,66 @@ const features = [
   {
     title: "Молниеносная скорость",
     text: "Смотри, играй и загружай без лагов — оптимизированные сервера держат максимальную скорость.",
-    className: "feature-card speed-lines",
-    visual: <div className="speed-chip" aria-hidden />,
+    className: "feature-card feature-speed",
+    visual: (
+      <div className="feature-speed-visual" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+    ),
   },
   {
     title: "Безопасный доступ",
     text: "Подключился — и всё уже защищено. Надёжное шифрование без лишних настроек.",
-    className: "feature-card lock-card",
-    visual: <div className="lock-visual active" aria-hidden>⌁</div>,
+    className: "feature-card feature-lock",
+    visual: (
+      <div className="feature-lock-visual" aria-hidden>
+        <div className="feature-lock-shackle" />
+        <div className="feature-lock-body" />
+      </div>
+    ),
   },
   {
     title: "Интернет без границ",
     text: "Любые сайты и сервисы — как будто ты в нужной стране.",
-    className: "feature-card pulse-card",
-    visual: <div className="pulse-globe" aria-hidden />,
+    className: "feature-card feature-globe",
+    visual: (
+      <div className="feature-globe-visual" aria-hidden>
+        <div className="feature-globe-core" />
+        <div className="feature-globe-ring feature-globe-ring-one" />
+        <div className="feature-globe-ring feature-globe-ring-two" />
+      </div>
+    ),
   },
   {
     title: "Умное подключение",
     text: "VPN сам выбирает лучший сервер для стабильного соединения.",
-    className: "feature-card dots-card",
+    className: "feature-card feature-smart",
     visual: (
-      <div className="server-dots" aria-hidden>
-        <span className="dot" />
-        <span className="dot" />
-        <span className="dot" />
+      <div className="feature-smart-visual" aria-hidden>
+        <span className="feature-smart-dot" />
+        <span className="feature-smart-dot" />
+        <span className="feature-smart-dot" />
       </div>
     ),
   },
   {
     title: "Полная приватность",
     text: "Никаких логов. Никакого отслеживания. Только ты и интернет.",
-    className: "feature-card fade-blur-card",
-    visual: <div className="privacy-veil" aria-hidden />,
+    className: "feature-card feature-privacy",
+    visual: (
+      <div className="feature-privacy-visual" aria-hidden>
+        <span />
+      </div>
+    ),
   },
 ];
 
 export default async function HomePage() {
   const [session, settings] = await Promise.all([getAuthSession(), getSettings()]);
   const supportTelegramUrl = env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL ?? settings.supportTelegramUrl ?? null;
+  const monthlyPriceKopeks = settings.pricePerDayKopeks * 30;
 
   return (
     <main className="grid-overlay overflow-hidden">
@@ -95,7 +117,7 @@ export default async function HomePage() {
                 className="stagger-in max-w-4xl text-5xl font-black uppercase leading-none tracking-[0.08em] text-white sm:text-7xl"
                 data-delay="1"
               >
-                VPN без лишней возни
+                Безопасный доступ в пару тапов
               </h1>
               <p className="stagger-in max-w-2xl text-lg leading-8 text-zinc-300" data-delay="2">
                 Подключение за минуту, гибкий баланс вместо тарифов, управление устройствами и доступом из одного кабинета.
@@ -130,9 +152,9 @@ export default async function HomePage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Card className="hero-glow">
-                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Цена за день</p>
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Цена за месяц</p>
                 <p className="mt-3 text-3xl font-bold text-white">
-                  {formatCurrency(settings.pricePerDayKopeks)}
+                  {formatCurrency(monthlyPriceKopeks)}
                 </p>
               </Card>
               <Card>
@@ -178,7 +200,11 @@ export default async function HomePage() {
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             {features.map((feature, index) => (
-              <Card key={feature.title} className={`${feature.className} stagger-in card-lift`} data-delay={String(index % 3)}>
+              <Card
+                key={feature.title}
+                className={`${feature.className} stagger-in card-lift`}
+                data-delay={String((index % 3) + 1)}
+              >
                 <div className="feature-visual">{feature.visual}</div>
                 <h3 className="mt-6 text-lg font-semibold text-white">{feature.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-zinc-400">{feature.text}</p>
@@ -188,60 +214,34 @@ export default async function HomePage() {
         </section>
 
         <section className="pb-10">
-          <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-            <Card className="space-y-5">
-              <Badge>Сервис</Badge>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-sm font-semibold text-white">Протоколы</p>
-                  <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Современные профили и подписочная ссылка из панели Remnawave.
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-sm font-semibold text-white">Скорость</p>
-                  <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Быстрый доступ к конфигам и минимальная задержка на подключении.
-                  </p>
-                </div>
-                <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-sm font-semibold text-white">Устройства</p>
-                  <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Лимиты и HWID-устройства регулируются прямо в кабинете.
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="space-y-5">
-              <Badge>Документы и поддержка</Badge>
-              <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-                Все нужные ссылки под рукой
-              </h2>
-              <div className="flex flex-wrap gap-3">
-                {env.NEXT_PUBLIC_OFFER_URL ? (
-                  <Link href={env.NEXT_PUBLIC_OFFER_URL} target="_blank" rel="noreferrer">
-                    <Button variant="ghost">Оферта</Button>
-                  </Link>
-                ) : null}
-                {env.NEXT_PUBLIC_PRIVACY_URL ? (
-                  <Link href={env.NEXT_PUBLIC_PRIVACY_URL} target="_blank" rel="noreferrer">
-                    <Button>Политика конфиденциальности</Button>
-                  </Link>
-                ) : null}
-                {supportTelegramUrl ? (
-                  <Link href={supportTelegramUrl} target="_blank" rel="noreferrer">
-                    <Button variant="ghost">Telegram</Button>
-                  </Link>
-                ) : null}
-                {env.SUPPORT_EMAIL ? (
-                  <Link href={`mailto:${env.SUPPORT_EMAIL}`}>
-                    <Button variant="ghost">{env.SUPPORT_EMAIL}</Button>
-                  </Link>
-                ) : null}
-              </div>
-            </Card>
-          </div>
+          <Card className="space-y-5">
+            <Badge>Документы и поддержка</Badge>
+            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
+              Все нужные ссылки под рукой
+            </h2>
+            <div className="flex flex-wrap gap-3">
+              {env.NEXT_PUBLIC_OFFER_URL ? (
+                <Link href={env.NEXT_PUBLIC_OFFER_URL} target="_blank" rel="noreferrer">
+                  <Button variant="ghost">Оферта</Button>
+                </Link>
+              ) : null}
+              {env.NEXT_PUBLIC_PRIVACY_URL ? (
+                <Link href={env.NEXT_PUBLIC_PRIVACY_URL} target="_blank" rel="noreferrer">
+                  <Button variant="ghost">Политика конфиденциальности</Button>
+                </Link>
+              ) : null}
+              {supportTelegramUrl ? (
+                <Link href={supportTelegramUrl} target="_blank" rel="noreferrer">
+                  <Button variant="ghost">Telegram</Button>
+                </Link>
+              ) : null}
+              {env.SUPPORT_EMAIL ? (
+                <Link href={`mailto:${env.SUPPORT_EMAIL}`}>
+                  <Button variant="ghost">{env.SUPPORT_EMAIL}</Button>
+                </Link>
+              ) : null}
+            </div>
+          </Card>
         </section>
       </div>
     </main>
