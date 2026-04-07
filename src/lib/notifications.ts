@@ -18,7 +18,7 @@ export async function notifyUserOnce(params: {
     },
   });
 
-  if (existing) {
+  if (existing?.success) {
     return existing;
   }
 
@@ -29,6 +29,16 @@ export async function notifyUserOnce(params: {
     const result = await sendTelegramMessage(params.user.telegramId, params.message);
     success = result.ok;
     message = result.ok ? "Delivered to Telegram." : result.error;
+  }
+
+  if (existing) {
+    return db.notificationEvent.update({
+      where: { id: existing.id },
+      data: {
+        success,
+        message,
+      },
+    });
   }
 
   return db.notificationEvent.create({

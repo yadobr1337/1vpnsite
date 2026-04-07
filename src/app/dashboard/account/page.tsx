@@ -205,7 +205,16 @@ export default async function DashboardAccountPage({
                 {user.telegramId ? `@${user.telegramUsername ?? user.telegramId}` : "Telegram не привязан"}
               </span>
             </p>
-            <TelegramLogin mode="link" />
+            {user.telegramId ? (
+              <div className="rounded-3xl border border-emerald-400/20 bg-emerald-500/10 p-4">
+                <p className="text-sm text-emerald-200">
+                  Telegram уже привязан. Уведомления о балансе и подписке будут приходить в этот
+                  аккаунт после старта бота.
+                </p>
+              </div>
+            ) : (
+              <TelegramLogin mode="link" />
+            )}
           </Card>
 
           <Card>

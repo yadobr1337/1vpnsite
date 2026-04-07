@@ -6,7 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { ensureUserSquad } from "@/lib/squads";
-import { verifyTelegramAuth, verifyTelegramMiniAppAuth } from "@/lib/telegram";
+import { sendTelegramMessage, verifyTelegramAuth, verifyTelegramMiniAppAuth } from "@/lib/telegram";
 import { ensureUserPublicId } from "@/lib/user-identity";
 
 async function getSessionUser(userId: string) {
@@ -49,6 +49,8 @@ async function upsertTelegramUser(params: {
         },
       });
 
+      const linkedNow = !existing?.telegramId;
+
       const persisted = existing
         ? await tx.user.update({
             where: { id: existing.id },
@@ -74,7 +76,7 @@ async function upsertTelegramUser(params: {
           });
 
       await ensureUserSquad(persisted.id, tx);
-      return persisted;
+      return { persisted, linkedNow };
     },
     { timeout: 15_000, maxWait: 10_000 },
   );
@@ -145,8 +147,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error(verification.error);
         }
 
-        const user = await upsertTelegramUser(verification.data);
-        return getSessionUser(user.id);
+        const { persisted, linkedNow } = await upsertTelegramUser(verification.data);
+        if (linkedNow) {
+          await sendTelegramMessage(
+            verification.data.id,
+            "<b>1VPN</b>\nTelegram подключен. Уведомления о балансе и подписке включены.",
+          );
+        }
+        return getSessionUser(persisted.id);
       },
     }),
     CredentialsProvider({
@@ -166,8 +174,14 @@ export const authOptions: NextAuthOptions = {
           throw new Error(verification.error);
         }
 
-        const user = await upsertTelegramUser(verification.data);
-        return getSessionUser(user.id);
+        const { persisted, linkedNow } = await upsertTelegramUser(verification.data);
+        if (linkedNow) {
+          await sendTelegramMessage(
+            verification.data.id,
+            "<b>1VPN</b>\nTelegram подключен. Уведомления о балансе и подписке включены.",
+          );
+        }
+        return getSessionUser(persisted.id);
       },
     }),
   ],

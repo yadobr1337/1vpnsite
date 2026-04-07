@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getAuthSession } from "@/lib/auth";
-import { verifyTelegramAuth } from "@/lib/telegram";
+import { sendTelegramMessage, verifyTelegramAuth } from "@/lib/telegram";
 
 export async function POST(request: Request) {
   const session = await getAuthSession();
@@ -49,6 +49,11 @@ export async function POST(request: Request) {
       telegramPhotoUrl: verification.data.photoUrl,
     },
   });
+
+  await sendTelegramMessage(
+    verification.data.id,
+    "<b>1VPN</b>\nTelegram привязан. Уведомления о балансе и подписке включены.",
+  );
 
   return NextResponse.json({ ok: true });
 }
