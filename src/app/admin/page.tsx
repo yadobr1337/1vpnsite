@@ -17,10 +17,12 @@ import {
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
+import { ensureAllUsersHavePublicIds } from "@/lib/user-identity";
 import { formatCurrency, formatDays } from "@/lib/utils";
 
 export default async function AdminPage() {
   await requireAdmin();
+  await ensureAllUsersHavePublicIds();
 
   const [settings, users, squads] = await Promise.all([
     getSettings(),
@@ -191,7 +193,10 @@ export default async function AdminPage() {
               {squads.length ? (
                 squads.map((squad) => (
                   <div key={squad.id} className="rounded-3xl border border-white/10 bg-black/20 p-4">
-                    <form action={updateSquadLimitAction} className="grid gap-3 xl:grid-cols-[1fr_1.2fr_160px_auto_auto]">
+                    <form
+                      action={updateSquadLimitAction}
+                      className="grid gap-3 xl:grid-cols-[1fr_1.2fr_160px_auto_auto]"
+                    >
                       <input type="hidden" name="squadId" value={squad.id} />
                       <input
                         className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
@@ -250,8 +255,7 @@ export default async function AdminPage() {
               Баланс, устройства и статус доступа
             </h2>
             <p className="text-sm text-zinc-400">
-              Пополнение выполняется прямо в карточке пользователя. Для поиска и идентификации
-              отображается локальный ID.
+              Короткий ID можно использовать для быстрого поиска, пополнения и ручных действий.
             </p>
           </div>
 
@@ -261,7 +265,7 @@ export default async function AdminPage() {
               <input
                 className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
                 name="userId"
-                placeholder="Вставьте user ID"
+                placeholder="Короткий ID / email / internal ID"
                 required
                 type="text"
               />
@@ -297,8 +301,11 @@ export default async function AdminPage() {
                 <Card key={user.id} className="space-y-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
-                      <p className="font-mono text-lg font-semibold text-white">{user.id}</p>
+                      <p className="font-mono text-lg font-semibold text-white">
+                        ID: {user.publicId ?? "pending"}
+                      </p>
                       <p className="text-sm text-zinc-400">{user.email}</p>
+                      <p className="text-xs text-zinc-500">Internal: {user.id}</p>
                       <p className="text-sm text-zinc-500">
                         Role: {user.role} • Сквад: {user.squad?.name ?? "не назначен"}
                       </p>

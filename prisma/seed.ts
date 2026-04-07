@@ -4,6 +4,31 @@ import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+function randomNumericId(length = 8) {
+  let value = "";
+  for (let index = 0; index < length; index += 1) {
+    const digit = index === 0 ? 1 + Math.floor(Math.random() * 9) : Math.floor(Math.random() * 10);
+    value += String(digit);
+  }
+  return value;
+}
+
+async function generateUniquePublicId() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const publicId = randomNumericId();
+    const existing = await prisma.user.findUnique({
+      where: { publicId },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return publicId;
+    }
+  }
+
+  throw new Error("Failed to generate public ID");
+}
+
 async function main() {
   await prisma.systemSettings.upsert({
     where: { id: "default" },
@@ -44,11 +69,16 @@ async function main() {
       update: {
         passwordHash,
         role: Role.ADMIN,
+        publicId: (await prisma.user.findUnique({
+          where: { email: adminEmail },
+          select: { publicId: true },
+        }))?.publicId ?? (await generateUniquePublicId()),
       },
       create: {
         email: adminEmail,
         passwordHash,
         role: Role.ADMIN,
+        publicId: await generateUniquePublicId(),
       },
     });
   }

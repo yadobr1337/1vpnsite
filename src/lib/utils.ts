@@ -14,7 +14,7 @@ export function formatCurrency(valueKopeks: number) {
 }
 
 export function formatDays(days: number) {
-  const wholeDays = Math.max(0, Math.floor(days));
+  const wholeDays = days > 0 ? Math.max(1, Math.ceil(days)) : 0;
   return new Intl.NumberFormat("ru-RU", {
     maximumFractionDigits: 0,
   }).format(wholeDays);

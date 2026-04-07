@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { ensureUserSquad } from "@/lib/squads";
+import { ensureUserPublicId } from "@/lib/user-identity";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -40,6 +41,8 @@ export const authOptions: NextAuthOptions = {
         if (!isValid) {
           throw new Error("Invalid password.");
         }
+
+        await ensureUserPublicId(user.id);
 
         return {
           id: user.id,
@@ -117,6 +120,8 @@ export const authOptions: NextAuthOptions = {
             include: { squad: true },
           });
         }, { timeout: 15_000, maxWait: 10_000 });
+
+        await ensureUserPublicId(user.id);
 
         return {
           id: user.id,

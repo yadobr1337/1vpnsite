@@ -146,7 +146,7 @@ export async function enableRemoteUser(remnawaveUserUuid?: string | null) {
 
   const result = await remnawaveRequest<EnableUserCommand.Response>({
     path: EnableUserCommand.url(remnawaveUserUuid),
-    method: "PATCH",
+    method: "POST",
     body: { uuid: remnawaveUserUuid },
   });
 
@@ -160,7 +160,7 @@ export async function disableRemoteUser(remnawaveUserUuid?: string | null) {
 
   const result = await remnawaveRequest<DisableUserCommand.Response>({
     path: DisableUserCommand.url(remnawaveUserUuid),
-    method: "PATCH",
+    method: "POST",
     body: { uuid: remnawaveUserUuid },
   });
 

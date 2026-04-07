@@ -14,6 +14,7 @@ import {
   topUpBalance,
 } from "@/lib/billing";
 import { createSquad, deleteSquad, updateSquad } from "@/lib/squads";
+import { resolveUserIdentifier } from "@/lib/user-identity";
 
 function parseKopeks(value: FormDataEntryValue | null) {
   const amount = Number(String(value ?? "0").replace(",", "."));
@@ -133,7 +134,10 @@ export async function deleteSquadAction(formData: FormData) {
 
 export async function toggleBanAction(formData: FormData) {
   await requireAdmin();
-  await setBanState(String(formData.get("userId")), String(formData.get("ban")) === "true");
+  await setBanState(
+    await resolveUserIdentifier(String(formData.get("userId") ?? "")),
+    String(formData.get("ban")) === "true",
+  );
   revalidatePath("/admin");
   revalidatePath("/dashboard");
 }
@@ -141,7 +145,7 @@ export async function toggleBanAction(formData: FormData) {
 export async function adjustUserBalanceAction(formData: FormData) {
   await requireAdmin();
   await adjustBalanceByAdmin({
-    userId: String(formData.get("userId")),
+    userId: await resolveUserIdentifier(String(formData.get("userId") ?? "")),
     amountKopeks: parseKopeks(formData.get("amount")),
     description: String(formData.get("description") ?? "Admin balance adjustment"),
   });
@@ -151,7 +155,7 @@ export async function adjustUserBalanceAction(formData: FormData) {
 
 export async function updateUserHwidAction(formData: FormData) {
   await requireAdmin();
-  const userId = String(formData.get("userId"));
+  const userId = await resolveUserIdentifier(String(formData.get("userId") ?? ""));
 
   await db.user.update({
     where: { id: userId },

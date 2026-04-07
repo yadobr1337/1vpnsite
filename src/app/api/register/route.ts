@@ -6,6 +6,7 @@ import { verifyTurnstileToken } from "@/lib/captcha";
 import { db } from "@/lib/db";
 import { getSettings } from "@/lib/settings";
 import { ensureUserSquad } from "@/lib/squads";
+import { ensureUserPublicId } from "@/lib/user-identity";
 
 const registerSchema = z
   .object({
@@ -49,5 +50,7 @@ export async function POST(request: Request) {
     return created;
   });
 
-  return NextResponse.json({ ok: true, userId: user.id });
+  const publicId = await ensureUserPublicId(user.id);
+
+  return NextResponse.json({ ok: true, userId: user.id, publicId });
 }

@@ -3,21 +3,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
+import { updateOwnEmailAction, updateOwnPasswordAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { updateOwnEmailAction, updateOwnPasswordAction } from "@/app/actions";
+import { ensureUserPublicId } from "@/lib/user-identity";
 
 export default async function DashboardAccountPage() {
   const session = await requireUser();
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      id: true,
-      email: true,
-      passwordHash: true,
-      telegramId: true,
-    },
-  });
+  const [user, publicId] = await Promise.all([
+    db.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        id: true,
+        email: true,
+        passwordHash: true,
+        telegramId: true,
+      },
+    }),
+    ensureUserPublicId(session.user.id),
+  ]);
 
   if (!user) {
     return null;
@@ -30,7 +34,7 @@ export default async function DashboardAccountPage() {
           <div>
             <Badge>Account settings</Badge>
             <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-              {user.id}
+              {publicId}
             </h1>
             <p className="mt-2 text-sm text-zinc-400">{user.email}</p>
           </div>
@@ -91,7 +95,8 @@ export default async function DashboardAccountPage() {
         <Card>
           <Badge>Info</Badge>
           <div className="mt-4 space-y-2 text-sm text-zinc-300">
-            <p>ID пользователя: {user.id}</p>
+            <p>Короткий ID: {publicId}</p>
+            <p>Internal ID: {user.id}</p>
             <p>Telegram ID: {user.telegramId ?? "не привязан"}</p>
           </div>
         </Card>

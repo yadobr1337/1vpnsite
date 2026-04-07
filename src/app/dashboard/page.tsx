@@ -7,24 +7,27 @@ import { LogoutButton } from "@/components/logout-button";
 import { CopyButton } from "@/components/copy-button";
 import { claimTrialAction, topUpBalanceAction, updateOwnHwidAction } from "@/app/actions";
 import { requireUser } from "@/lib/auth";
+import { getUserOverview } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { getUserOverview } from "@/lib/billing";
+import { ensureUserPublicId } from "@/lib/user-identity";
 import { formatCurrency, formatDays } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await requireUser();
-  const overview = await getUserOverview(session.user.id);
+  const [overview, publicId, transactions] = await Promise.all([
+    getUserOverview(session.user.id),
+    ensureUserPublicId(session.user.id),
+    db.balanceTransaction.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    }),
+  ]);
 
   if (!overview) {
     return null;
   }
-
-  const transactions = await db.balanceTransaction.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    take: 8,
-  });
 
   const canClaimTrial = !overview.user.trialClaimedAt;
 
@@ -35,7 +38,7 @@ export default async function DashboardPage() {
           <div>
             <Badge>Client dashboard</Badge>
             <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-              {overview.user.id}
+              {publicId}
             </h1>
             <p className="mt-2 text-sm text-zinc-400">{overview.user.email}</p>
           </div>
