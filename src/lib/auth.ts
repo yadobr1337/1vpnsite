@@ -6,7 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { ensureUserSquad } from "@/lib/squads";
-import { verifyTelegramAuth } from "@/lib/telegram";
+import { verifyTelegramAuth, verifyTelegramMiniAppAuth } from "@/lib/telegram";
 import { ensureUserPublicId } from "@/lib/user-identity";
 
 async function getSessionUser(userId: string) {
@@ -31,6 +31,53 @@ async function getSessionUser(userId: string) {
     isEmailPlaceholder: user.isEmailPlaceholder,
     emailVerified: user.emailVerified?.toISOString() ?? null,
   };
+}
+
+async function upsertTelegramUser(params: {
+  id: string;
+  firstName: string;
+  username: string | null;
+  photoUrl: string | null;
+}) {
+  const placeholderEmail = `telegram-${params.id}@1vpn.local`;
+
+  return db.$transaction(
+    async (tx) => {
+      const existing = await tx.user.findFirst({
+        where: {
+          OR: [{ telegramId: params.id }, { email: placeholderEmail }],
+        },
+      });
+
+      const persisted = existing
+        ? await tx.user.update({
+            where: { id: existing.id },
+            data: {
+              telegramId: params.id,
+              telegramFirstName: params.firstName,
+              telegramUsername: params.username,
+              telegramPhotoUrl: params.photoUrl,
+              email: existing.isEmailPlaceholder ? placeholderEmail : existing.email,
+              isEmailPlaceholder: existing.isEmailPlaceholder,
+            },
+          })
+        : await tx.user.create({
+            data: {
+              email: placeholderEmail,
+              role: Role.USER,
+              telegramId: params.id,
+              telegramFirstName: params.firstName,
+              telegramUsername: params.username,
+              telegramPhotoUrl: params.photoUrl,
+              isEmailPlaceholder: true,
+            },
+          });
+
+      await ensureUserSquad(persisted.id, tx);
+      return persisted;
+    },
+    { timeout: 15_000, maxWait: 10_000 },
+  );
 }
 
 export const authOptions: NextAuthOptions = {
@@ -98,45 +145,28 @@ export const authOptions: NextAuthOptions = {
           throw new Error(verification.error);
         }
 
-        const placeholderEmail = `telegram-${verification.data.id}@1vpn.local`;
-        const user = await db.$transaction(
-          async (tx) => {
-            const existing = await tx.user.findFirst({
-              where: {
-                OR: [{ telegramId: verification.data.id }, { email: placeholderEmail }],
-              },
-            });
+        const user = await upsertTelegramUser(verification.data);
+        return getSessionUser(user.id);
+      },
+    }),
+    CredentialsProvider({
+      id: "telegram-mini",
+      name: "Telegram Mini App",
+      credentials: {
+        initData: { label: "Mini app initData", type: "text" },
+      },
+      async authorize(credentials) {
+        const initData = credentials?.initData;
+        if (!initData) {
+          throw new Error("Telegram Mini App payload is missing.");
+        }
 
-            const persisted = existing
-              ? await tx.user.update({
-                  where: { id: existing.id },
-                  data: {
-                    telegramId: verification.data.id,
-                    telegramFirstName: verification.data.firstName,
-                    telegramUsername: verification.data.username,
-                    telegramPhotoUrl: verification.data.photoUrl,
-                    email: existing.isEmailPlaceholder ? placeholderEmail : existing.email,
-                    isEmailPlaceholder: existing.isEmailPlaceholder,
-                  },
-                })
-              : await tx.user.create({
-                  data: {
-                    email: placeholderEmail,
-                    role: Role.USER,
-                    telegramId: verification.data.id,
-                    telegramFirstName: verification.data.firstName,
-                    telegramUsername: verification.data.username,
-                    telegramPhotoUrl: verification.data.photoUrl,
-                    isEmailPlaceholder: true,
-                  },
-                });
+        const verification = await verifyTelegramMiniAppAuth(initData);
+        if (!verification.ok) {
+          throw new Error(verification.error);
+        }
 
-            await ensureUserSquad(persisted.id, tx);
-            return persisted;
-          },
-          { timeout: 15_000, maxWait: 10_000 },
-        );
-
+        const user = await upsertTelegramUser(verification.data);
         return getSessionUser(user.id);
       },
     }),
