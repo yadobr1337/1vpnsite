@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Orbitron, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { PlanetNetworkBackground } from "@/components/planet-network-background";
 import { siteConfig } from "@/lib/site";
 
 const headingFont = Orbitron({
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="ru">
       <body className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable}`}>
+        <PlanetNetworkBackground />
         {children}
       </body>
     </html>
