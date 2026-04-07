@@ -9,8 +9,9 @@ export function formatCurrency(valueKopeks: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: 2,
-  }).format(valueKopeks / 100);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(valueKopeks / 100));
 }
 
 export function formatDays(days: number) {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Role } from "@prisma/client";
+import { Role, TransactionType, VpnProvisionState } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +20,41 @@ import { getSettings } from "@/lib/settings";
 import { ensureAllUsersHavePublicIds } from "@/lib/user-identity";
 import { formatCurrency, formatDays } from "@/lib/utils";
 
+function getVpnStatusLabel(params: {
+  isBanned: boolean;
+  balanceKopeks: number;
+  vpnProvisionState: VpnProvisionState;
+}) {
+  if (params.isBanned) {
+    return "Заблокирован";
+  }
+
+  if (params.balanceKopeks <= 0) {
+    return "Ожидает оплаты";
+  }
+
+  if (params.vpnProvisionState === VpnProvisionState.ACTIVE) {
+    return "Активный";
+  }
+
+  return "Ожидает оплаты";
+}
+
+function getTransactionLabel(type: TransactionType) {
+  switch (type) {
+    case TransactionType.TOPUP:
+      return "Пополнение";
+    case TransactionType.ADMIN_ADJUSTMENT:
+      return "Ручное изменение";
+    case TransactionType.TRIAL:
+      return "Пробный день";
+    case TransactionType.BILLING_DEBIT:
+      return "Списание";
+    default:
+      return type;
+  }
+}
+
 export default async function AdminPage() {
   await requireAdmin();
   await ensureAllUsersHavePublicIds();
@@ -29,6 +64,10 @@ export default async function AdminPage() {
     db.user.findMany({
       include: {
         squad: true,
+        transactions: {
+          orderBy: { createdAt: "desc" },
+          take: 6,
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -56,7 +95,7 @@ export default async function AdminPage() {
                 Управление 1VPN
               </h1>
               <p className="mt-2 text-sm text-zinc-400">
-                Сквады привязываются к уже созданным группам Remnawave по UUID.
+                Управление пользователями, балансом, сквадами и статусами доступа.
               </p>
             </div>
           </div>
@@ -252,39 +291,9 @@ export default async function AdminPage() {
           <div className="space-y-3">
             <Badge>Пользователи</Badge>
             <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Баланс, устройства и статус доступа
+              Одна карточка на пользователя
             </h2>
-            <p className="text-sm text-zinc-400">
-              Короткий ID можно использовать для быстрого поиска, пополнения и ручных действий.
-            </p>
           </div>
-
-          <Card>
-            <Badge>Быстрое пополнение</Badge>
-            <form action={adjustUserBalanceAction} className="mt-5 grid gap-3 xl:grid-cols-[1.1fr_180px_1fr_auto]">
-              <input
-                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                name="userId"
-                placeholder="Короткий ID / email / internal ID"
-                required
-                type="text"
-              />
-              <input
-                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                defaultValue="100"
-                name="amount"
-                step="0.01"
-                type="number"
-              />
-              <input
-                className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                defaultValue="Ручное пополнение из админки"
-                name="description"
-                type="text"
-              />
-              <PendingButton>Начислить баланс</PendingButton>
-            </form>
-          </Card>
 
           <div className="grid gap-4">
             {users.map((user) => {
@@ -296,9 +305,14 @@ export default async function AdminPage() {
                 settings.pricePerDayKopeks > 0
                   ? user.balanceKopeks / (settings.pricePerDayKopeks * effectiveDeviceCount)
                   : 0;
+              const vpnStatus = getVpnStatusLabel({
+                isBanned: user.isBanned,
+                balanceKopeks: user.balanceKopeks,
+                vpnProvisionState: user.vpnProvisionState,
+              });
 
               return (
-                <Card key={user.id} className="space-y-4">
+                <Card key={user.id} className="space-y-5">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                       <p className="font-mono text-lg font-semibold text-white">
@@ -307,7 +321,7 @@ export default async function AdminPage() {
                       <p className="text-sm text-zinc-400">{user.email}</p>
                       <p className="text-xs text-zinc-500">Internal: {user.id}</p>
                       <p className="text-sm text-zinc-500">
-                        Role: {user.role} • Сквад: {user.squad?.name ?? "не назначен"}
+                        Сквад: {user.squad?.name ?? "не назначен"}
                       </p>
                       <p className="text-sm text-zinc-500">
                         Remnawave user UUID: {user.remnawaveUserUuid ?? "еще не создан"}
@@ -316,16 +330,16 @@ export default async function AdminPage() {
                         {user.subscriptionUrl ?? "Ссылка подписки еще не сгенерирована"}
                       </p>
                     </div>
+
                     <div className="grid gap-2 text-right text-sm text-zinc-300">
                       <p>Баланс: {formatCurrency(user.balanceKopeks)}</p>
                       <p>Остаток: {formatDays(remainingDays)} дн.</p>
                       <p>Устройства: {effectiveDeviceCount}</p>
-                      <p>{user.isBanned ? "Бан активен" : "Аккаунт активен"}</p>
-                      <p>VPN: {user.vpnStatusMessage ?? user.vpnProvisionState}</p>
+                      <p>Статус VPN: {vpnStatus}</p>
                     </div>
                   </div>
 
-                  <div className="grid gap-3 xl:grid-cols-[auto_1fr]">
+                  <div className="grid gap-3 xl:grid-cols-[auto_220px_1fr]">
                     <form action={toggleBanAction} className="flex items-center gap-3">
                       <input type="hidden" name="userId" value={user.id} />
                       <input type="hidden" name="ban" value={String(!user.isBanned)} />
@@ -334,13 +348,25 @@ export default async function AdminPage() {
                       </PendingButton>
                     </form>
 
+                    <form action={updateUserHwidAction} className="flex items-center gap-3">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input
+                        className="h-11 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
+                        defaultValue={user.hwidDeviceLimit ?? ""}
+                        name="hwidDeviceLimit"
+                        placeholder={`По умолчанию: ${settings.defaultHwidDeviceLimit}`}
+                        type="number"
+                      />
+                      <PendingButton variant="ghost">Устройства</PendingButton>
+                    </form>
+
                     <form action={adjustUserBalanceAction} className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
                       <input type="hidden" name="userId" value={user.id} />
                       <input
                         className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
                         defaultValue="100"
                         name="amount"
-                        step="0.01"
+                        step="1"
                         type="number"
                       />
                       <input
@@ -349,21 +375,49 @@ export default async function AdminPage() {
                         name="description"
                         type="text"
                       />
-                      <PendingButton variant="ghost">Изменить баланс</PendingButton>
+                      <PendingButton variant="ghost">Пополнить баланс</PendingButton>
                     </form>
                   </div>
 
-                  <form action={updateUserHwidAction} className="grid gap-3 md:grid-cols-[220px_auto]">
-                    <input type="hidden" name="userId" value={user.id} />
-                    <input
-                      className="h-11 rounded-2xl border border-white/10 bg-black/30 px-4 text-white"
-                      defaultValue={user.hwidDeviceLimit ?? ""}
-                      name="hwidDeviceLimit"
-                      placeholder={`По умолчанию: ${settings.defaultHwidDeviceLimit}`}
-                      type="number"
-                    />
-                    <PendingButton variant="ghost">Обновить устройства</PendingButton>
-                  </form>
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                      История операций
+                    </p>
+                    <div className="grid gap-3">
+                      {user.transactions.length ? (
+                        user.transactions.map((transaction) => (
+                          <div
+                            key={transaction.id}
+                            className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-4 py-3"
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-white">
+                                {getTransactionLabel(transaction.type)}
+                              </p>
+                              <p className="text-xs text-zinc-500">{transaction.description}</p>
+                            </div>
+                            <div className="text-right">
+                              <p
+                                className={`text-sm font-semibold ${
+                                  transaction.amountKopeks >= 0 ? "text-cyan-200" : "text-zinc-200"
+                                }`}
+                              >
+                                {transaction.amountKopeks >= 0 ? "+" : ""}
+                                {formatCurrency(transaction.amountKopeks)}
+                              </p>
+                              <p className="text-xs text-zinc-500">
+                                {transaction.createdAt.toLocaleString("ru-RU")}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-4 py-3 text-sm text-zinc-400">
+                          Операций пока нет.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </Card>
               );
             })}
