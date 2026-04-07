@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { publicEnv } from "@/lib/public-env";
 
@@ -16,6 +17,7 @@ type TelegramLoginProps = {
 };
 
 export function TelegramLogin({ mode = "login", onLinked }: TelegramLoginProps) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export function TelegramLogin({ mode = "login", onLinked }: TelegramLoginProps) 
         }
 
         setSuccess("Telegram успешно привязан.");
+        router.refresh();
         onLinked?.();
         return;
       }
@@ -80,7 +83,7 @@ export function TelegramLogin({ mode = "login", onLinked }: TelegramLoginProps) 
     return () => {
       delete window.onTelegramAuth;
     };
-  }, [mode, onLinked]);
+  }, [mode, onLinked, router]);
 
   if (!publicEnv.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
     return (

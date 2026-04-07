@@ -1,17 +1,17 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { CopyButton } from "@/components/copy-button";
-import { DeviceStepperForm } from "@/components/device-stepper-form";
-import { BillingModal } from "@/components/billing-modal";
-import { PendingButton } from "@/components/ui/pending-button";
 import {
   claimTrialAction,
   deleteOwnHwidDeviceAction,
   topUpBalanceAction,
   updateOwnHwidAction,
 } from "@/app/actions";
+import { BillingModal } from "@/components/billing-modal";
+import { CopyButton } from "@/components/copy-button";
+import { DeviceStepperForm } from "@/components/device-stepper-form";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { PendingButton } from "@/components/ui/pending-button";
 import { requireUser } from "@/lib/auth";
 import { getUserOverview } from "@/lib/billing";
 import { db } from "@/lib/db";
@@ -20,7 +20,15 @@ import { getRemoteUserDevices } from "@/lib/remnawave";
 import { ensureUserPublicId } from "@/lib/user-identity";
 import { formatCurrency, formatDays } from "@/lib/utils";
 
-function getVpnStatusLabel(balanceKopeks: number, vpnProvisionState: string) {
+function getVpnStatusLabel(
+  balanceKopeks: number,
+  vpnProvisionState: string,
+  isBanned: boolean,
+) {
+  if (isBanned) {
+    return "Заблокирован";
+  }
+
   if (balanceKopeks <= 0) {
     return "Ожидает оплаты";
   }
@@ -104,13 +112,26 @@ export default async function DashboardPage() {
                 </p>
                 <p className="mt-2 text-sm leading-7 text-zinc-200">
                   {!hasRealEmail
-                    ? "Добавьте email в настройках аккаунта. Без него недоступен вход по коду и часть уведомлений."
+                    ? "Добавьте email в настройках аккаунта. Без него недоступны восстановление пароля и часть уведомлений."
                     : "Подтвердите email кодом из письма, чтобы использовать уведомления и восстановление пароля."}
                 </p>
               </div>
               <Link href="/dashboard/account">
                 <Button>Открыть настройки</Button>
               </Link>
+            </div>
+          </Card>
+        ) : null}
+
+        {overview.user.isBanned ? (
+          <Card className="border-red-400/20 bg-red-500/10">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-red-200">
+                Блокировка
+              </p>
+              <p className="text-sm leading-7 text-zinc-100">
+                Ваш аккаунт заблокирован администратором. Доступ к VPN приостановлен до разбана.
+              </p>
             </div>
           </Card>
         ) : null}
@@ -168,7 +189,11 @@ export default async function DashboardPage() {
             <Card>
               <p className="text-xs uppercase tracking-[0.28em] text-zinc-500">Статус VPN</p>
               <p className="mt-3 text-xl font-bold text-white">
-                {getVpnStatusLabel(overview.user.balanceKopeks, overview.user.vpnProvisionState)}
+                {getVpnStatusLabel(
+                  overview.user.balanceKopeks,
+                  overview.user.vpnProvisionState,
+                  overview.user.isBanned,
+                )}
               </p>
             </Card>
           </div>
@@ -206,7 +231,8 @@ export default async function DashboardPage() {
                   HWID и лимиты
                 </h2>
                 <p className="mt-2 text-sm leading-7 text-zinc-400">
-                  Настройте лимит устройств и при необходимости удалите конкретное устройство из панели.
+                  Настройте лимит устройств и при необходимости удалите конкретное устройство из
+                  панели.
                 </p>
               </div>
 
@@ -226,9 +252,7 @@ export default async function DashboardPage() {
                         <p className="text-sm font-semibold text-white">
                           {device.deviceModel || device.platform || `Устройство ${device.hwid.slice(0, 8)}`}
                         </p>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          HWID: {device.hwid}
-                        </p>
+                        <p className="mt-1 text-xs text-zinc-500">HWID: {device.hwid}</p>
                         <p className="mt-1 text-xs text-zinc-500">
                           Последний вход: {device.updatedAt.toLocaleString("ru-RU")}
                         </p>
@@ -261,7 +285,8 @@ export default async function DashboardPage() {
                     Пробный день
                   </h2>
                   <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Один раз можно получить баланс на 1 день. Для активации нужно привязать Telegram.
+                    Один раз можно получить баланс на 1 день. Для активации нужно привязать
+                    Telegram.
                   </p>
                 </div>
 
@@ -285,7 +310,10 @@ export default async function DashboardPage() {
             <div className="mt-4 space-y-2 text-sm text-zinc-300">
               <p>Цена за день: {formatCurrency(overview.settings.pricePerDayKopeks)}</p>
               <p>Telegram: {overview.user.telegramId ?? "не привязан"}</p>
-              <p>При нулевом балансе ссылка отключается и удаляется через {overview.settings.deletionGraceHours} ч.</p>
+              <p>
+                При нулевом балансе ссылка отключается и удаляется через{" "}
+                {overview.settings.deletionGraceHours} ч.
+              </p>
             </div>
           </Card>
 
