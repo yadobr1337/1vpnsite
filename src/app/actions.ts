@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { requireAdmin, requireUser } from "@/lib/auth";
@@ -15,8 +16,8 @@ import {
 } from "@/lib/billing";
 import {
   buildEmailVerificationIdentifier,
-  issueEmailCode,
   consumeEmailCode,
+  issueEmailCode,
 } from "@/lib/email-codes";
 import { deleteRemoteUserDevice } from "@/lib/remnawave";
 import { createSquad, deleteSquad, updateSquad } from "@/lib/squads";
@@ -63,6 +64,25 @@ function parseRequiredString(value: FormDataEntryValue | null) {
 function parseOptionalString(value: FormDataEntryValue | null) {
   const parsed = String(value ?? "").trim();
   return parsed || null;
+}
+
+function redirectByMailError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.includes("SMTP is not configured")) {
+    redirect("/dashboard/account?emailStatus=smtp_missing");
+  }
+
+  if (
+    message.includes("Invalid login") ||
+    message.includes("535") ||
+    message.includes("Username and Password not accepted") ||
+    message.toLowerCase().includes("auth")
+  ) {
+    redirect("/dashboard/account?emailStatus=smtp_auth_error");
+  }
+
+  redirect("/dashboard/account?emailStatus=send_error");
 }
 
 export async function topUpBalanceAction(formData: FormData) {
@@ -205,7 +225,7 @@ export async function updateOwnEmailAction(formData: FormData) {
   });
 
   if (existing) {
-    throw new Error("Email is already in use.");
+    redirect("/dashboard/account?emailStatus=email_exists");
   }
 
   await db.user.update({
@@ -215,17 +235,22 @@ export async function updateOwnEmailAction(formData: FormData) {
     },
   });
 
-  await issueEmailCode({
-    identifier: buildEmailVerificationIdentifier(session.user.id, email),
-    email,
-    subject: "1VPN: подтверждение email",
-    title: "Подтвердите email",
-    description:
-      "Введите код на странице настроек аккаунта, чтобы привязать или изменить email для входа и уведомлений.",
-  });
+  try {
+    await issueEmailCode({
+      identifier: buildEmailVerificationIdentifier(session.user.id, email),
+      email,
+      subject: "1VPN: подтверждение email",
+      title: "Подтвердите email",
+      description:
+        "Введите код на странице настроек аккаунта, чтобы привязать или изменить email для входа и уведомлений.",
+    });
+  } catch (error) {
+    redirectByMailError(error);
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/account");
+  redirect("/dashboard/account?emailStatus=sent");
 }
 
 export async function verifyOwnEmailAction(formData: FormData) {
@@ -241,7 +266,7 @@ export async function verifyOwnEmailAction(formData: FormData) {
   });
 
   if (!user?.pendingEmail) {
-    throw new Error("There is no pending email change.");
+    redirect("/dashboard/account?emailStatus=no_pending_email");
   }
 
   const valid = await consumeEmailCode(
@@ -250,7 +275,7 @@ export async function verifyOwnEmailAction(formData: FormData) {
   );
 
   if (!valid) {
-    throw new Error("Invalid or expired code.");
+    redirect("/dashboard/account?emailStatus=invalid_code");
   }
 
   await db.user.update({
@@ -265,6 +290,7 @@ export async function verifyOwnEmailAction(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/account");
+  redirect("/dashboard/account?emailStatus=verified");
 }
 
 export async function resendOwnEmailVerificationAction() {
@@ -281,26 +307,31 @@ export async function resendOwnEmailVerificationAction() {
   });
 
   if (!user) {
-    throw new Error("User not found.");
+    redirect("/dashboard/account?emailStatus=user_not_found");
   }
 
   const targetEmail = user.pendingEmail ?? (!user.isEmailPlaceholder ? user.email : null);
   if (!targetEmail) {
-    throw new Error("Add an email first.");
+    redirect("/dashboard/account?emailStatus=no_pending_email");
   }
 
-  await issueEmailCode({
-    identifier: buildEmailVerificationIdentifier(user.id, targetEmail),
-    email: targetEmail,
-    subject: "1VPN: код подтверждения email",
-    title: "Подтверждение email",
-    description:
-      user.pendingEmail || !user.emailVerified
-        ? "Подтвердите email кодом, чтобы использовать вход по почте и получать уведомления."
-        : "Подтвердите действие кодом из письма.",
-  });
+  try {
+    await issueEmailCode({
+      identifier: buildEmailVerificationIdentifier(user.id, targetEmail),
+      email: targetEmail,
+      subject: "1VPN: код подтверждения email",
+      title: "Подтверждение email",
+      description:
+        user.pendingEmail || !user.emailVerified
+          ? "Подтвердите email кодом, чтобы использовать вход по почте и получать уведомления."
+          : "Подтвердите действие кодом из письма.",
+    });
+  } catch (error) {
+    redirectByMailError(error);
+  }
 
   revalidatePath("/dashboard/account");
+  redirect("/dashboard/account?emailStatus=resent");
 }
 
 export async function togglePasswordlessAction(formData: FormData) {
@@ -320,7 +351,7 @@ export async function togglePasswordlessAction(formData: FormData) {
   }
 
   if (enabled && (user.isEmailPlaceholder || !user.emailVerified)) {
-    throw new Error("Verify a real email before enabling code login.");
+    redirect("/dashboard/account?emailStatus=verify_real_email");
   }
 
   await db.user.update({

@@ -17,8 +17,60 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { ensureUserPublicId } from "@/lib/user-identity";
 
-export default async function DashboardAccountPage() {
+function getEmailStatusMessage(status?: string) {
+  switch (status) {
+    case "sent":
+      return { tone: "success", text: "Код отправлен на email." };
+    case "resent":
+      return { tone: "success", text: "Код отправлен повторно." };
+    case "verified":
+      return { tone: "success", text: "Email подтвержден." };
+    case "smtp_missing":
+      return {
+        tone: "error",
+        text: "SMTP не настроен. Заполните SMTP-переменные в .env.",
+      };
+    case "smtp_auth_error":
+      return {
+        tone: "error",
+        text: "SMTP отклонил авторизацию. Для Яндекса обычно нужен пароль приложения, а не основной пароль аккаунта.",
+      };
+    case "send_error":
+      return {
+        tone: "error",
+        text: "Не удалось отправить письмо. Проверьте SMTP-настройки и попробуйте снова.",
+      };
+    case "email_exists":
+      return { tone: "error", text: "Этот email уже используется другим аккаунтом." };
+    case "invalid_code":
+      return { tone: "error", text: "Неверный или просроченный код." };
+    case "verify_real_email":
+      return {
+        tone: "error",
+        text: "Сначала добавьте и подтвердите реальный email.",
+      };
+    case "no_pending_email":
+      return { tone: "error", text: "Сначала запросите код для email." };
+    default:
+      return null;
+  }
+}
+
+type SearchParamsInput =
+  | Promise<{ emailStatus?: string | string[] }>
+  | { emailStatus?: string | string[] }
+  | undefined;
+
+export default async function DashboardAccountPage({
+  searchParams,
+}: {
+  searchParams?: SearchParamsInput;
+}) {
   const session = await requireUser();
+  const params = searchParams ? await searchParams : {};
+  const emailStatus = Array.isArray(params.emailStatus) ? params.emailStatus[0] : params.emailStatus;
+  const statusMessage = getEmailStatusMessage(emailStatus);
+
   const [user, publicId] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
@@ -65,6 +117,18 @@ export default async function DashboardAccountPage() {
           </div>
         </header>
 
+        {statusMessage ? (
+          <Card
+            className={
+              statusMessage.tone === "success"
+                ? "border-emerald-400/20 bg-emerald-500/10"
+                : "border-red-400/20 bg-red-500/10"
+            }
+          >
+            <p className="text-sm text-white">{statusMessage.text}</p>
+          </Card>
+        ) : null}
+
         <section className="grid gap-4 lg:grid-cols-2">
           <Card className="space-y-5">
             <Badge>Email</Badge>
@@ -88,7 +152,9 @@ export default async function DashboardAccountPage() {
                   type="email"
                 />
               </label>
-              <PendingButton>{hasRealEmail ? "Отправить код на новый email" : "Отправить код"}</PendingButton>
+              <PendingButton>
+                {hasRealEmail ? "Отправить код на новый email" : "Отправить код"}
+              </PendingButton>
             </form>
 
             {user.pendingEmail || (hasRealEmail && !user.emailVerified) ? (
@@ -194,9 +260,7 @@ export default async function DashboardAccountPage() {
             <p className="text-sm text-zinc-300">
               Текущее состояние:{" "}
               <span className="font-semibold text-white">
-                {user.telegramId
-                  ? `@${user.telegramUsername ?? user.telegramId}`
-                  : "Telegram не привязан"}
+                {user.telegramId ? `@${user.telegramUsername ?? user.telegramId}` : "Telegram не привязан"}
               </span>
             </p>
             <TelegramLogin mode="link" />
