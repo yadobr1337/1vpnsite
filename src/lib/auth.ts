@@ -5,9 +5,38 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import {
+  buildLoginCodeIdentifier,
+  consumeEmailCode,
+} from "@/lib/email-codes";
 import { verifyTelegramAuth } from "@/lib/telegram";
 import { ensureUserSquad } from "@/lib/squads";
 import { ensureUserPublicId } from "@/lib/user-identity";
+
+async function getSessionUser(userId: string) {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  const publicId = await ensureUserPublicId(user.id);
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    balanceKopeks: user.balanceKopeks,
+    telegramId: user.telegramId,
+    subscriptionUrl: user.subscriptionUrl,
+    publicId,
+    passwordlessEnabled: user.passwordlessEnabled,
+    isEmailPlaceholder: user.isEmailPlaceholder,
+    emailVerified: user.emailVerified?.toISOString() ?? null,
+  };
+}
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -33,8 +62,12 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email.toLowerCase() },
         });
 
-        if (!user?.passwordHash) {
+        if (!user?.passwordHash || user.isEmailPlaceholder) {
           throw new Error("Account not found.");
+        }
+
+        if (user.passwordlessEnabled) {
+          throw new Error("Password login is disabled. Use email code.");
         }
 
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
@@ -42,16 +75,41 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid password.");
         }
 
-        await ensureUserPublicId(user.id);
+        return getSessionUser(user.id);
+      },
+    }),
+    CredentialsProvider({
+      id: "email-code",
+      name: "Email Code",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        code: { label: "Code", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials.code) {
+          throw new Error("Email and code are required.");
+        }
 
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          balanceKopeks: user.balanceKopeks,
-          telegramId: user.telegramId,
-          subscriptionUrl: user.subscriptionUrl,
-        };
+        const email = credentials.email.toLowerCase();
+        const user = await db.user.findUnique({
+          where: { email },
+        });
+
+        if (!user || user.isEmailPlaceholder) {
+          throw new Error("Account not found.");
+        }
+
+        const canUseCode = user.passwordlessEnabled || !user.passwordHash;
+        if (!canUseCode) {
+          throw new Error("Code login is disabled for this account.");
+        }
+
+        const isValid = await consumeEmailCode(buildLoginCodeIdentifier(email), credentials.code);
+        if (!isValid) {
+          throw new Error("Invalid or expired code.");
+        }
+
+        return getSessionUser(user.id);
       },
     }),
     CredentialsProvider({
@@ -83,54 +141,46 @@ export const authOptions: NextAuthOptions = {
           throw new Error(verification.error);
         }
 
-        const email = `telegram-${verification.data.id}@1vpn.local`;
-        const user = await db.$transaction(async (tx) => {
-          const existing = await tx.user.findFirst({
-            where: {
-              OR: [{ telegramId: verification.data.id }, { email }],
-            },
-          });
+        const placeholderEmail = `telegram-${verification.data.id}@1vpn.local`;
+        const user = await db.$transaction(
+          async (tx) => {
+            const existing = await tx.user.findFirst({
+              where: {
+                OR: [{ telegramId: verification.data.id }, { email: placeholderEmail }],
+              },
+            });
 
-          const persisted = existing
-            ? await tx.user.update({
-                where: { id: existing.id },
-                data: {
-                  telegramId: verification.data.id,
-                  telegramFirstName: verification.data.firstName,
-                  telegramUsername: verification.data.username,
-                  telegramPhotoUrl: verification.data.photoUrl,
-                  email,
-                },
-              })
-            : await tx.user.create({
-                data: {
-                  email,
-                  role: Role.USER,
-                  telegramId: verification.data.id,
-                  telegramFirstName: verification.data.firstName,
-                  telegramUsername: verification.data.username,
-                  telegramPhotoUrl: verification.data.photoUrl,
-                },
-              });
+            const persisted = existing
+              ? await tx.user.update({
+                  where: { id: existing.id },
+                  data: {
+                    telegramId: verification.data.id,
+                    telegramFirstName: verification.data.firstName,
+                    telegramUsername: verification.data.username,
+                    telegramPhotoUrl: verification.data.photoUrl,
+                    email: existing.isEmailPlaceholder ? placeholderEmail : existing.email,
+                    isEmailPlaceholder: existing.isEmailPlaceholder,
+                  },
+                })
+              : await tx.user.create({
+                  data: {
+                    email: placeholderEmail,
+                    role: Role.USER,
+                    telegramId: verification.data.id,
+                    telegramFirstName: verification.data.firstName,
+                    telegramUsername: verification.data.username,
+                    telegramPhotoUrl: verification.data.photoUrl,
+                    isEmailPlaceholder: true,
+                  },
+                });
 
-          await ensureUserSquad(persisted.id, tx);
+            await ensureUserSquad(persisted.id, tx);
+            return persisted;
+          },
+          { timeout: 15_000, maxWait: 10_000 },
+        );
 
-          return tx.user.findUniqueOrThrow({
-            where: { id: persisted.id },
-            include: { squad: true },
-          });
-        }, { timeout: 15_000, maxWait: 10_000 });
-
-        await ensureUserPublicId(user.id);
-
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          balanceKopeks: user.balanceKopeks,
-          telegramId: user.telegramId,
-          subscriptionUrl: user.subscriptionUrl,
-        };
+        return getSessionUser(user.id);
       },
     }),
   ],
@@ -145,10 +195,7 @@ export const authOptions: NextAuthOptions = {
         return token;
       }
 
-      const freshUser = await db.user.findUnique({
-        where: { id: userId },
-      });
-
+      const freshUser = await getSessionUser(String(userId));
       if (!freshUser) {
         return token;
       }
@@ -157,6 +204,11 @@ export const authOptions: NextAuthOptions = {
       token.balanceKopeks = freshUser.balanceKopeks;
       token.telegramId = freshUser.telegramId;
       token.subscriptionUrl = freshUser.subscriptionUrl;
+      token.publicId = freshUser.publicId;
+      token.passwordlessEnabled = freshUser.passwordlessEnabled;
+      token.isEmailPlaceholder = freshUser.isEmailPlaceholder;
+      token.emailVerified = freshUser.emailVerified;
+      token.email = freshUser.email;
 
       return token;
     },
@@ -170,6 +222,11 @@ export const authOptions: NextAuthOptions = {
       session.user.balanceKopeks = token.balanceKopeks ?? 0;
       session.user.telegramId = token.telegramId;
       session.user.subscriptionUrl = token.subscriptionUrl;
+      session.user.publicId = token.publicId;
+      session.user.passwordlessEnabled = token.passwordlessEnabled ?? false;
+      session.user.isEmailPlaceholder = token.isEmailPlaceholder ?? false;
+      session.user.emailVerified = token.emailVerified ?? null;
+      session.user.email = String(token.email ?? session.user.email ?? "");
 
       return session;
     },

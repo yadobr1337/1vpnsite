@@ -10,9 +10,15 @@ declare global {
   }
 }
 
-export function TelegramLogin() {
+type TelegramLoginProps = {
+  mode?: "login" | "link";
+  onLinked?: () => void;
+};
+
+export function TelegramLogin({ mode = "login", onLinked }: TelegramLoginProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const botUsername = publicEnv.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
@@ -21,6 +27,29 @@ export function TelegramLogin() {
     }
 
     window.onTelegramAuth = async (user) => {
+      setError(null);
+      setSuccess(null);
+
+      if (mode === "link") {
+        const response = await fetch("/api/telegram/link", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(user),
+        });
+
+        const payload = (await response.json()) as { error?: string };
+        if (!response.ok) {
+          setError(payload.error ?? "Не удалось привязать Telegram.");
+          return;
+        }
+
+        setSuccess("Telegram успешно привязан.");
+        onLinked?.();
+        return;
+      }
+
       const result = await signIn("telegram", {
         ...user,
         redirect: false,
@@ -51,12 +80,12 @@ export function TelegramLogin() {
     return () => {
       delete window.onTelegramAuth;
     };
-  }, []);
+  }, [mode, onLinked]);
 
   if (!publicEnv.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME) {
     return (
       <p className="text-sm text-zinc-400">
-        Telegram login появится после заполнения `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`.
+        Telegram будет доступен после заполнения `NEXT_PUBLIC_TELEGRAM_BOT_USERNAME`.
       </p>
     );
   }
@@ -64,6 +93,7 @@ export function TelegramLogin() {
   return (
     <div className="space-y-3">
       <div ref={containerRef} className="min-h-12" />
+      {success ? <p className="text-sm text-emerald-300">{success}</p> : null}
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
     </div>
   );

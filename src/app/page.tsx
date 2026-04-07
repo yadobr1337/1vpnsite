@@ -5,19 +5,58 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LogoutButton } from "@/components/logout-button";
 import { getAuthSession } from "@/lib/auth";
+import { env } from "@/lib/env";
 import { getSettings } from "@/lib/settings";
 import { siteConfig } from "@/lib/site";
 import { formatCurrency } from "@/lib/utils";
 
+const features = [
+  {
+    title: "Молниеносная скорость",
+    text: "Смотри, играй и загружай без лагов — оптимизированные сервера держат максимальную скорость.",
+    className: "feature-card speed-lines",
+    visual: <div className="speed-chip" aria-hidden />,
+  },
+  {
+    title: "Безопасный доступ",
+    text: "Подключился — и всё уже защищено. Надёжное шифрование без лишних настроек.",
+    className: "feature-card lock-card",
+    visual: <div className="lock-visual active" aria-hidden>⌁</div>,
+  },
+  {
+    title: "Интернет без границ",
+    text: "Любые сайты и сервисы — как будто ты в нужной стране.",
+    className: "feature-card pulse-card",
+    visual: <div className="pulse-globe" aria-hidden />,
+  },
+  {
+    title: "Умное подключение",
+    text: "VPN сам выбирает лучший сервер для стабильного соединения.",
+    className: "feature-card dots-card",
+    visual: (
+      <div className="server-dots" aria-hidden>
+        <span className="dot" />
+        <span className="dot" />
+        <span className="dot" />
+      </div>
+    ),
+  },
+  {
+    title: "Полная приватность",
+    text: "Никаких логов. Никакого отслеживания. Только ты и интернет.",
+    className: "feature-card fade-blur-card",
+    visual: <div className="privacy-veil" aria-hidden />,
+  },
+];
+
 export default async function HomePage() {
   const [session, settings] = await Promise.all([getAuthSession(), getSettings()]);
-  const offerUrl = process.env.NEXT_PUBLIC_OFFER_URL;
-  const rulesUrl = process.env.NEXT_PUBLIC_RULES_URL;
+  const supportTelegramUrl = env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL ?? settings.supportTelegramUrl ?? null;
 
   return (
     <main className="grid-overlay overflow-hidden">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-6 sm:px-8 lg:px-10">
-        <header className="stagger-in flex items-center justify-between rounded-full border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-xl">
+      <div className="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-4 sm:px-8 lg:px-10">
+        <header className="stagger-in flex flex-wrap items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-5 py-4 backdrop-blur-xl">
           <Link href="/" className="flex items-center gap-3">
             <span className="glitch text-xl font-black tracking-[0.3em]" data-text="1VPN">
               1VPN
@@ -31,7 +70,7 @@ export default async function HomePage() {
             {session?.user ? (
               <>
                 <Link href="/dashboard">
-                  <Button variant="ghost">Личный кабинет</Button>
+                  <Button variant="ghost">Кабинет</Button>
                 </Link>
                 <LogoutButton />
               </>
@@ -56,11 +95,10 @@ export default async function HomePage() {
                 className="stagger-in max-w-4xl text-5xl font-black uppercase leading-none tracking-[0.08em] text-white sm:text-7xl"
                 data-delay="1"
               >
-                1VPN
+                VPN без лишней возни
               </h1>
-              <p className="stagger-in max-w-xl text-lg leading-8 text-zinc-300" data-delay="2">
-                Приватный VPN-сервис с быстрым доступом, личным кабинетом и гибким управлением
-                устройствами.
+              <p className="stagger-in max-w-2xl text-lg leading-8 text-zinc-300" data-delay="2">
+                Подключение за минуту, гибкий баланс вместо тарифов, управление устройствами и доступом из одного кабинета.
               </p>
             </div>
 
@@ -71,16 +109,23 @@ export default async function HomePage() {
                 </Link>
               ) : (
                 <>
+                  <Link href="/register">
+                    <Button size="lg">Регистрация</Button>
+                  </Link>
                   <Link href="/login">
                     <Button variant="ghost" size="lg">
                       Войти
                     </Button>
                   </Link>
-                  <Link href="/register">
-                    <Button size="lg">Создать аккаунт</Button>
-                  </Link>
                 </>
               )}
+              {supportTelegramUrl ? (
+                <Link href={supportTelegramUrl} target="_blank" rel="noreferrer">
+                  <Button variant="ghost" size="lg">
+                    Поддержка
+                  </Button>
+                </Link>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -121,49 +166,77 @@ export default async function HomePage() {
           </div>
         </section>
 
+        <section className="pb-8">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <Badge>Преимущества</Badge>
+              <h2 className="mt-3 text-3xl font-bold uppercase tracking-[0.08em] text-white">
+                Почему это удобно
+              </h2>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {features.map((feature, index) => (
+              <Card key={feature.title} className={`${feature.className} stagger-in card-lift`} data-delay={String(index % 3)}>
+                <div className="feature-visual">{feature.visual}</div>
+                <h3 className="mt-6 text-lg font-semibold text-white">{feature.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-zinc-400">{feature.text}</p>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         <section className="pb-10">
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <Card className="space-y-5">
-              <Badge>Коротко о сервисе</Badge>
+              <Badge>Сервис</Badge>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
                   <p className="text-sm font-semibold text-white">Протоколы</p>
                   <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Поддержка современных конфигураций Remnawave и быстрая выдача подписочной ссылки.
+                    Современные профили и подписочная ссылка из панели Remnawave.
                   </p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
                   <p className="text-sm font-semibold text-white">Скорость</p>
                   <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Минимум действий для подключения и быстрый доступ к конфигу из кабинета.
+                    Быстрый доступ к конфигам и минимальная задержка на подключении.
                   </p>
                 </div>
                 <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
                   <p className="text-sm font-semibold text-white">Устройства</p>
                   <p className="mt-2 text-sm leading-7 text-zinc-400">
-                    Количество устройств регулируется в кабинете, а лимит сразу уходит в панель.
+                    Лимиты и HWID-устройства регулируются прямо в кабинете.
                   </p>
                 </div>
               </div>
             </Card>
 
             <Card className="space-y-5">
-              <Badge>Документы</Badge>
+              <Badge>Документы и поддержка</Badge>
               <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-                Оферта и правила
+                Все нужные ссылки под рукой
               </h2>
-              <p className="text-sm leading-7 text-zinc-400">
-                Ссылки берутся из env-переменных и открываются как отдельные документы.
-              </p>
               <div className="flex flex-wrap gap-3">
-                {offerUrl ? (
-                  <Link href={offerUrl} target="_blank" rel="noreferrer">
+                {env.NEXT_PUBLIC_OFFER_URL ? (
+                  <Link href={env.NEXT_PUBLIC_OFFER_URL} target="_blank" rel="noreferrer">
                     <Button variant="ghost">Оферта</Button>
                   </Link>
                 ) : null}
-                {rulesUrl ? (
-                  <Link href={rulesUrl} target="_blank" rel="noreferrer">
-                    <Button>Правила сервиса</Button>
+                {env.NEXT_PUBLIC_PRIVACY_URL ? (
+                  <Link href={env.NEXT_PUBLIC_PRIVACY_URL} target="_blank" rel="noreferrer">
+                    <Button>Политика конфиденциальности</Button>
+                  </Link>
+                ) : null}
+                {supportTelegramUrl ? (
+                  <Link href={supportTelegramUrl} target="_blank" rel="noreferrer">
+                    <Button variant="ghost">Telegram</Button>
+                  </Link>
+                ) : null}
+                {env.SUPPORT_EMAIL ? (
+                  <Link href={`mailto:${env.SUPPORT_EMAIL}`}>
+                    <Button variant="ghost">{env.SUPPORT_EMAIL}</Button>
                   </Link>
                 ) : null}
               </div>

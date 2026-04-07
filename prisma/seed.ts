@@ -69,6 +69,8 @@ async function main() {
       update: {
         passwordHash,
         role: Role.ADMIN,
+        emailVerified: new Date(),
+        isEmailPlaceholder: false,
         publicId: (await prisma.user.findUnique({
           where: { email: adminEmail },
           select: { publicId: true },
@@ -78,6 +80,8 @@ async function main() {
         email: adminEmail,
         passwordHash,
         role: Role.ADMIN,
+        emailVerified: new Date(),
+        isEmailPlaceholder: false,
         publicId: await generateUniquePublicId(),
       },
     });

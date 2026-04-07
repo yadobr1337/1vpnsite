@@ -9,6 +9,10 @@ declare module "next-auth" {
       balanceKopeks: number;
       telegramId?: string | null;
       subscriptionUrl?: string | null;
+      publicId?: string | null;
+      passwordlessEnabled: boolean;
+      isEmailPlaceholder: boolean;
+      emailVerified?: string | null;
     };
   }
 
@@ -21,5 +25,9 @@ declare module "next-auth/jwt" {
     balanceKopeks?: number;
     telegramId?: string | null;
     subscriptionUrl?: string | null;
+    publicId?: string | null;
+    passwordlessEnabled?: boolean;
+    isEmailPlaceholder?: boolean;
+    emailVerified?: string | null;
   }
 }

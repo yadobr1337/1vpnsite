@@ -2,8 +2,10 @@ import {
   CreateInternalSquadCommand,
   CreateUserCommand,
   DeleteUserCommand,
+  DeleteUserHwidDeviceCommand,
   DisableUserCommand,
   EnableUserCommand,
+  GetUserHwidDevicesCommand,
   UpdateUserCommand,
 } from "@remnawave/backend-contract";
 import type { Squad, User } from "@prisma/client";
@@ -179,4 +181,41 @@ export async function deleteRemoteUser(remnawaveUserUuid?: string | null) {
   });
 
   return DeleteUserCommand.ResponseSchema.parse(result).response;
+}
+
+export async function getRemoteUserDevices(remnawaveUserUuid?: string | null) {
+  if (!isConfigured() || !remnawaveUserUuid) {
+    return [];
+  }
+
+  GetUserHwidDevicesCommand.RequestSchema.parse({ userUuid: remnawaveUserUuid });
+  const result = await remnawaveRequest<GetUserHwidDevicesCommand.Response>({
+    path: GetUserHwidDevicesCommand.url(remnawaveUserUuid),
+    method: "GET",
+  });
+
+  return GetUserHwidDevicesCommand.ResponseSchema.parse(result).response.devices;
+}
+
+export async function deleteRemoteUserDevice(params: {
+  remnawaveUserUuid?: string | null;
+  hwid: string;
+}) {
+  if (!isConfigured() || !params.remnawaveUserUuid) {
+    return [];
+  }
+
+  const body = {
+    userUuid: params.remnawaveUserUuid,
+    hwid: params.hwid,
+  };
+
+  DeleteUserHwidDeviceCommand.RequestSchema.parse(body);
+  const result = await remnawaveRequest<DeleteUserHwidDeviceCommand.Response>({
+    path: DeleteUserHwidDeviceCommand.url,
+    method: "POST",
+    body,
+  });
+
+  return DeleteUserHwidDeviceCommand.ResponseSchema.parse(result).response.devices;
 }

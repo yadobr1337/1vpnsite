@@ -13,6 +13,12 @@ import {
   syncUserLifecycle,
   topUpBalance,
 } from "@/lib/billing";
+import {
+  buildEmailVerificationIdentifier,
+  issueEmailCode,
+  consumeEmailCode,
+} from "@/lib/email-codes";
+import { deleteRemoteUserDevice } from "@/lib/remnawave";
 import { createSquad, deleteSquad, updateSquad } from "@/lib/squads";
 import { resolveUserIdentifier } from "@/lib/user-identity";
 
@@ -205,11 +211,125 @@ export async function updateOwnEmailAction(formData: FormData) {
   await db.user.update({
     where: { id: session.user.id },
     data: {
-      email,
+      pendingEmail: email,
+    },
+  });
+
+  await issueEmailCode({
+    identifier: buildEmailVerificationIdentifier(session.user.id, email),
+    email,
+    subject: "1VPN: подтверждение email",
+    title: "Подтвердите email",
+    description:
+      "Введите код на странице настроек аккаунта, чтобы привязать или изменить email для входа и уведомлений.",
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/account");
+}
+
+export async function verifyOwnEmailAction(formData: FormData) {
+  const session = await requireUser();
+  const code = parseRequiredString(formData.get("code"));
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      pendingEmail: true,
+    },
+  });
+
+  if (!user?.pendingEmail) {
+    throw new Error("There is no pending email change.");
+  }
+
+  const valid = await consumeEmailCode(
+    buildEmailVerificationIdentifier(user.id, user.pendingEmail),
+    code,
+  );
+
+  if (!valid) {
+    throw new Error("Invalid or expired code.");
+  }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      email: user.pendingEmail,
+      pendingEmail: null,
+      isEmailPlaceholder: false,
+      emailVerified: new Date(),
     },
   });
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/account");
+}
+
+export async function resendOwnEmailVerificationAction() {
+  const session = await requireUser();
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      id: true,
+      email: true,
+      pendingEmail: true,
+      isEmailPlaceholder: true,
+      emailVerified: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  const targetEmail = user.pendingEmail ?? (!user.isEmailPlaceholder ? user.email : null);
+  if (!targetEmail) {
+    throw new Error("Add an email first.");
+  }
+
+  await issueEmailCode({
+    identifier: buildEmailVerificationIdentifier(user.id, targetEmail),
+    email: targetEmail,
+    subject: "1VPN: код подтверждения email",
+    title: "Подтверждение email",
+    description:
+      user.pendingEmail || !user.emailVerified
+        ? "Подтвердите email кодом, чтобы использовать вход по почте и получать уведомления."
+        : "Подтвердите действие кодом из письма.",
+  });
+
+  revalidatePath("/dashboard/account");
+}
+
+export async function togglePasswordlessAction(formData: FormData) {
+  const session = await requireUser();
+  const enabled = String(formData.get("enabled")) === "true";
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      isEmailPlaceholder: true,
+      emailVerified: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  if (enabled && (user.isEmailPlaceholder || !user.emailVerified)) {
+    throw new Error("Verify a real email before enabling code login.");
+  }
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: {
+      passwordlessEnabled: enabled,
+    },
+  });
+
   revalidatePath("/dashboard/account");
 }
 
@@ -250,6 +370,29 @@ export async function updateOwnPasswordAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/account");
+}
+
+export async function deleteOwnHwidDeviceAction(formData: FormData) {
+  const session = await requireUser();
+  const hwid = parseRequiredString(formData.get("hwid"));
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      remnawaveUserUuid: true,
+    },
+  });
+
+  if (!user?.remnawaveUserUuid) {
+    throw new Error("VPN profile is not provisioned yet.");
+  }
+
+  await deleteRemoteUserDevice({
+    remnawaveUserUuid: user.remnawaveUserUuid,
+    hwid,
+  });
+
+  revalidatePath("/dashboard");
 }
 
 export async function runSyncNowAction() {

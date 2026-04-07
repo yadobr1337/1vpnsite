@@ -14,7 +14,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="dashboard-shell flex min-h-screen items-center justify-center px-6 py-10">
+    <main className="dashboard-shell flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 sm:py-10">
       <Card className="mx-auto w-full max-w-xl">
         <div className="flex items-center justify-between gap-4">
           <Badge>Login</Badge>
@@ -29,6 +29,9 @@ export default async function LoginPage() {
         <h1 className="mt-6 text-3xl font-bold uppercase tracking-[0.08em] text-white">
           Войти
         </h1>
+        <p className="mt-3 text-sm leading-7 text-zinc-400">
+          Используйте пароль, одноразовый код из email или Telegram.
+        </p>
 
         <div className="mt-8">
           <LoginForm />

@@ -4,6 +4,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyTurnstileToken } from "@/lib/captcha";
 import { db } from "@/lib/db";
+import {
+  buildEmailVerificationIdentifier,
+  issueEmailCode,
+} from "@/lib/email-codes";
 import { getSettings } from "@/lib/settings";
 import { ensureUserSquad } from "@/lib/squads";
 import { ensureUserPublicId } from "@/lib/user-identity";
@@ -52,5 +56,18 @@ export async function POST(request: Request) {
 
   const publicId = await ensureUserPublicId(user.id);
 
-  return NextResponse.json({ ok: true, userId: user.id, publicId });
+  try {
+    await issueEmailCode({
+      identifier: buildEmailVerificationIdentifier(user.id, user.email),
+      email: user.email,
+      subject: "1VPN: код подтверждения email",
+      title: "Подтвердите регистрацию",
+      description:
+        "Введите код в настройках аккаунта, чтобы подтвердить email и включить вход по одноразовым кодам.",
+    });
+  } catch {
+    return NextResponse.json({ ok: true, userId: user.id, publicId, emailCodeSent: false });
+  }
+
+  return NextResponse.json({ ok: true, userId: user.id, publicId, emailCodeSent: true });
 }

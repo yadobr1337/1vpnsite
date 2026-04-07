@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "1VPN",
   description:
-    "Сервис подписки VPN с гибким балансом, автосписанием по дням, Telegram-уведомлениями и админ-панелью.",
+    "VPN-сервис с гибким балансом, оплатой по дням, Telegram-уведомлениями и управлением доступом из одного кабинета.",
   tagline: "Virtual Private Network",
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,9 @@ declare global {
 
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
   const [captchaToken, setCaptchaToken] = useState("");
+  const [pending, startTransition] = useTransition();
   const captchaRef = useRef<HTMLDivElement>(null);
   const shouldRenderCaptcha = useMemo(() => Boolean(publicEnv.TURNSTILE_SITE_KEY), []);
 
@@ -52,46 +53,52 @@ export function RegisterForm() {
   return (
     <form
       className="space-y-4"
-      onSubmit={async (event) => {
+      onSubmit={(event) => {
         event.preventDefault();
-        setPending(true);
         setError(null);
+        setMessage(null);
+        const form = event.currentTarget;
 
-        const formData = new FormData(event.currentTarget);
-        const email = String(formData.get("email") ?? "");
-        const password = String(formData.get("password") ?? "");
+        startTransition(async () => {
+          const formData = new FormData(form);
+          const email = String(formData.get("email") ?? "");
+          const password = String(formData.get("password") ?? "");
 
-        const response = await fetch("/api/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+          const response = await fetch("/api/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email,
+              password,
+              captchaToken,
+            }),
+          });
+
+          const payload = (await response.json()) as { error?: string; emailCodeSent?: boolean };
+          if (!response.ok) {
+            setError(payload.error ?? "Не удалось создать аккаунт.");
+            return;
+          }
+
+          const result = await signIn("credentials", {
             email,
             password,
-            captchaToken,
-          }),
+            redirect: false,
+            callbackUrl: "/dashboard",
+          });
+
+          if (result?.error) {
+            setError(result.error);
+            return;
+          }
+
+          setMessage(
+            payload.emailCodeSent
+              ? "Аккаунт создан. Код подтверждения email уже отправлен."
+              : "Аккаунт создан. Подключите SMTP, чтобы включить email-коды.",
+          );
+          window.location.href = "/dashboard";
         });
-
-        const payload = (await response.json()) as { error?: string };
-        if (!response.ok) {
-          setError(payload.error ?? "Registration failed.");
-          setPending(false);
-          return;
-        }
-
-        const result = await signIn("credentials", {
-          email,
-          password,
-          redirect: false,
-          callbackUrl: "/dashboard",
-        });
-
-        setPending(false);
-        if (result?.error) {
-          setError(result.error);
-          return;
-        }
-
-        window.location.href = "/dashboard";
       }}
     >
       <div className="space-y-2">
@@ -113,6 +120,7 @@ export function RegisterForm() {
         </p>
       )}
 
+      {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       <Button className="w-full" disabled={pending}>
         {pending ? "Создание..." : "Создать аккаунт"}

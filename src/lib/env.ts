@@ -14,6 +14,17 @@ const serverSchema = z.object({
   REMNAWAVE_DEFAULT_INBOUND_UUIDS: z.string().optional(),
   CRON_SECRET: z.string().min(16).optional(),
   PAYMENTS_AUTO_APPROVE: z.enum(["true", "false"]).optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().optional(),
+  SMTP_SECURE: z.enum(["true", "false"]).optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM_EMAIL: z.string().email().optional(),
+  SMTP_FROM_NAME: z.string().optional(),
+  SUPPORT_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_OFFER_URL: z.string().url().optional(),
+  NEXT_PUBLIC_PRIVACY_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPPORT_TELEGRAM_URL: z.string().url().optional(),
 });
 
 export const env = serverSchema.parse({
@@ -29,4 +40,15 @@ export const env = serverSchema.parse({
   REMNAWAVE_DEFAULT_INBOUND_UUIDS: process.env.REMNAWAVE_DEFAULT_INBOUND_UUIDS,
   CRON_SECRET: process.env.CRON_SECRET,
   PAYMENTS_AUTO_APPROVE: process.env.PAYMENTS_AUTO_APPROVE,
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,
+  SMTP_SECURE: process.env.SMTP_SECURE,
+  SMTP_USER: process.env.SMTP_USER,
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL,
+  SMTP_FROM_NAME: process.env.SMTP_FROM_NAME,
+  SUPPORT_EMAIL: process.env.SUPPORT_EMAIL,
+  NEXT_PUBLIC_OFFER_URL: process.env.NEXT_PUBLIC_OFFER_URL,
+  NEXT_PUBLIC_PRIVACY_URL: process.env.NEXT_PUBLIC_PRIVACY_URL,
+  NEXT_PUBLIC_SUPPORT_TELEGRAM_URL: process.env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL,
 });

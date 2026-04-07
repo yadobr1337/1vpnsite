@@ -33,6 +33,8 @@ enum NotificationType {
   EXPIRED
   DELETION_WARNING
   DELETED
+  BANNED
+  UNBANNED
 }
 
 model User {
@@ -41,6 +43,9 @@ model User {
   email             String             @unique
   passwordHash      String?
   emailVerified     DateTime?
+  pendingEmail      String?
+  passwordlessEnabled Boolean          @default(false)
+  isEmailPlaceholder Boolean           @default(false)
   role              Role               @default(USER)
   telegramId        String?            @unique
   telegramUsername  String?
