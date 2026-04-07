@@ -334,36 +334,6 @@ export async function resendOwnEmailVerificationAction() {
   redirect("/dashboard/account?emailStatus=resent");
 }
 
-export async function togglePasswordlessAction(formData: FormData) {
-  const session = await requireUser();
-  const enabled = String(formData.get("enabled")) === "true";
-
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      isEmailPlaceholder: true,
-      emailVerified: true,
-    },
-  });
-
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  if (enabled && (user.isEmailPlaceholder || !user.emailVerified)) {
-    redirect("/dashboard/account?emailStatus=verify_real_email");
-  }
-
-  await db.user.update({
-    where: { id: session.user.id },
-    data: {
-      passwordlessEnabled: enabled,
-    },
-  });
-
-  revalidatePath("/dashboard/account");
-}
-
 export async function updateOwnPasswordAction(formData: FormData) {
   const session = await requireUser();
   const currentPassword = parseOptionalString(formData.get("currentPassword"));

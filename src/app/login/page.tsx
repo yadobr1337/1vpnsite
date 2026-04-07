@@ -26,11 +26,10 @@ export default async function LoginPage() {
           </Link>
         </div>
 
-        <h1 className="mt-6 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-          Войти
-        </h1>
+        <h1 className="mt-6 text-3xl font-bold uppercase tracking-[0.08em] text-white">Войти</h1>
         <p className="mt-3 text-sm leading-7 text-zinc-400">
-          Используйте пароль, одноразовый код из email или Telegram.
+          Используйте пароль или Telegram. Если забыли пароль, его можно восстановить кодом из
+          email.
         </p>
 
         <div className="mt-8">

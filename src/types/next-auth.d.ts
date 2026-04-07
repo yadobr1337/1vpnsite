@@ -10,12 +10,10 @@ declare module "next-auth" {
       telegramId?: string | null;
       subscriptionUrl?: string | null;
       publicId?: string | null;
-      passwordlessEnabled: boolean;
       isEmailPlaceholder: boolean;
       emailVerified?: string | null;
     };
   }
-
 }
 
 declare module "next-auth/jwt" {
@@ -26,7 +24,6 @@ declare module "next-auth/jwt" {
     telegramId?: string | null;
     subscriptionUrl?: string | null;
     publicId?: string | null;
-    passwordlessEnabled?: boolean;
     isEmailPlaceholder?: boolean;
     emailVerified?: string | null;
   }

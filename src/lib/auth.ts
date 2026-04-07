@@ -1,16 +1,12 @@
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import {
-  buildLoginCodeIdentifier,
-  consumeEmailCode,
-} from "@/lib/email-codes";
-import { verifyTelegramAuth } from "@/lib/telegram";
 import { ensureUserSquad } from "@/lib/squads";
+import { verifyTelegramAuth } from "@/lib/telegram";
 import { ensureUserPublicId } from "@/lib/user-identity";
 
 async function getSessionUser(userId: string) {
@@ -32,7 +28,6 @@ async function getSessionUser(userId: string) {
     telegramId: user.telegramId,
     subscriptionUrl: user.subscriptionUrl,
     publicId,
-    passwordlessEnabled: user.passwordlessEnabled,
     isEmailPlaceholder: user.isEmailPlaceholder,
     emailVerified: user.emailVerified?.toISOString() ?? null,
   };
@@ -66,47 +61,9 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Account not found.");
         }
 
-        if (user.passwordlessEnabled) {
-          throw new Error("Password login is disabled. Use email code.");
-        }
-
         const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isValid) {
           throw new Error("Invalid password.");
-        }
-
-        return getSessionUser(user.id);
-      },
-    }),
-    CredentialsProvider({
-      id: "email-code",
-      name: "Email Code",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        code: { label: "Code", type: "text" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials.code) {
-          throw new Error("Email and code are required.");
-        }
-
-        const email = credentials.email.toLowerCase();
-        const user = await db.user.findUnique({
-          where: { email },
-        });
-
-        if (!user || user.isEmailPlaceholder) {
-          throw new Error("Account not found.");
-        }
-
-        const canUseCode = user.passwordlessEnabled || !user.passwordHash;
-        if (!canUseCode) {
-          throw new Error("Code login is disabled for this account.");
-        }
-
-        const isValid = await consumeEmailCode(buildLoginCodeIdentifier(email), credentials.code);
-        if (!isValid) {
-          throw new Error("Invalid or expired code.");
         }
 
         return getSessionUser(user.id);
@@ -205,7 +162,6 @@ export const authOptions: NextAuthOptions = {
       token.telegramId = freshUser.telegramId;
       token.subscriptionUrl = freshUser.subscriptionUrl;
       token.publicId = freshUser.publicId;
-      token.passwordlessEnabled = freshUser.passwordlessEnabled;
       token.isEmailPlaceholder = freshUser.isEmailPlaceholder;
       token.emailVerified = freshUser.emailVerified;
       token.email = freshUser.email;
@@ -223,7 +179,6 @@ export const authOptions: NextAuthOptions = {
       session.user.telegramId = token.telegramId;
       session.user.subscriptionUrl = token.subscriptionUrl;
       session.user.publicId = token.publicId;
-      session.user.passwordlessEnabled = token.passwordlessEnabled ?? false;
       session.user.isEmailPlaceholder = token.isEmailPlaceholder ?? false;
       session.user.emailVerified = token.emailVerified ?? null;
       session.user.email = String(token.email ?? session.user.email ?? "");

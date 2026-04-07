@@ -103,7 +103,7 @@ export default async function DashboardPage() {
                 <p className="mt-2 text-sm leading-7 text-zinc-200">
                   {!hasRealEmail
                     ? "Добавьте email в настройках аккаунта. Без него недоступен вход по коду и часть уведомлений."
-                    : "Подтвердите email кодом из письма, чтобы включить passwordless-вход."}
+                    : "Подтвердите email кодом из письма, чтобы использовать уведомления и восстановление пароля."}
                 </p>
               </div>
               <Link href="/dashboard/account">

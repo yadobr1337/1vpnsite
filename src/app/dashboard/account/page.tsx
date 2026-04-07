@@ -1,17 +1,11 @@
 import Link from "next/link";
+import { resendOwnEmailVerificationAction, updateOwnEmailAction, updateOwnPasswordAction, verifyOwnEmailAction } from "@/app/actions";
+import { TelegramLogin } from "@/components/auth/telegram-login";
+import { LogoutButton } from "@/components/logout-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PendingButton } from "@/components/ui/pending-button";
-import { LogoutButton } from "@/components/logout-button";
-import { TelegramLogin } from "@/components/auth/telegram-login";
-import {
-  resendOwnEmailVerificationAction,
-  togglePasswordlessAction,
-  updateOwnEmailAction,
-  updateOwnPasswordAction,
-  verifyOwnEmailAction,
-} from "@/app/actions";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -26,29 +20,18 @@ function getEmailStatusMessage(status?: string) {
     case "verified":
       return { tone: "success", text: "Email подтвержден." };
     case "smtp_missing":
-      return {
-        tone: "error",
-        text: "SMTP не настроен. Заполните SMTP-переменные в .env.",
-      };
+      return { tone: "error", text: "SMTP не настроен. Заполните SMTP-переменные в .env." };
     case "smtp_auth_error":
       return {
         tone: "error",
-        text: "SMTP отклонил авторизацию. Для Яндекса обычно нужен пароль приложения, а не основной пароль аккаунта.",
+        text: "SMTP отклонил авторизацию. Для Яндекса обычно нужен пароль приложения.",
       };
     case "send_error":
-      return {
-        tone: "error",
-        text: "Не удалось отправить письмо. Проверьте SMTP-настройки и попробуйте снова.",
-      };
+      return { tone: "error", text: "Не удалось отправить письмо. Проверьте SMTP-настройки." };
     case "email_exists":
       return { tone: "error", text: "Этот email уже используется другим аккаунтом." };
     case "invalid_code":
       return { tone: "error", text: "Неверный или просроченный код." };
-    case "verify_real_email":
-      return {
-        tone: "error",
-        text: "Сначала добавьте и подтвердите реальный email.",
-      };
     case "no_pending_email":
       return { tone: "error", text: "Сначала запросите код для email." };
     default:
@@ -83,15 +66,12 @@ export default async function DashboardAccountPage({
         telegramId: true,
         telegramUsername: true,
         isEmailPlaceholder: true,
-        passwordlessEnabled: true,
       },
     }),
     ensureUserPublicId(session.user.id),
   ]);
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   const hasRealEmail = !user.isEmailPlaceholder;
   const emailLabel = hasRealEmail ? user.email : "Email не привязан";
@@ -102,9 +82,7 @@ export default async function DashboardAccountPage({
         <header className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
           <div>
             <Badge>Account settings</Badge>
-            <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">
-              {publicId}
-            </h1>
+            <h1 className="mt-4 text-3xl font-bold uppercase tracking-[0.08em] text-white">{publicId}</h1>
             <p className="mt-2 text-sm text-zinc-400">{emailLabel}</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -137,7 +115,7 @@ export default async function DashboardAccountPage({
                 Почта и подтверждение
               </h2>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                После привязки и подтверждения email можно включить вход по коду без пароля.
+                Подтвержденный email нужен для уведомлений и восстановления пароля.
               </p>
             </div>
 
@@ -183,49 +161,11 @@ export default async function DashboardAccountPage({
           </Card>
 
           <Card className="space-y-5">
-            <Badge>Login</Badge>
-            <div>
-              <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-                Вход по коду
-              </h2>
-              <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Если включено, вход выполняется по email и одноразовому коду вместо пароля.
-              </p>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-black/20 p-4">
-              <p className="text-sm text-zinc-300">
-                Текущий режим:{" "}
-                <span className="font-semibold text-white">
-                  {user.passwordlessEnabled ? "вход по коду" : "стандартный пароль"}
-                </span>
-              </p>
-            </div>
-
-            <form action={togglePasswordlessAction}>
-              <input type="hidden" name="enabled" value={String(!user.passwordlessEnabled)} />
-              <PendingButton
-                disabled={!hasRealEmail || !user.emailVerified}
-                variant={user.passwordlessEnabled ? "ghost" : "primary"}
-              >
-                {user.passwordlessEnabled ? "Вернуть вход по паролю" : "Включить вход по коду"}
-              </PendingButton>
-            </form>
-
-            {!hasRealEmail || !user.emailVerified ? (
-              <p className="text-sm text-zinc-400">
-                Сначала добавьте и подтвердите реальный email.
-              </p>
-            ) : null}
-          </Card>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-2">
-          <Card className="space-y-5">
             <Badge>Password</Badge>
-            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
-              Пароль
-            </h2>
+            <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">Пароль</h2>
+            <p className="text-sm leading-7 text-zinc-400">
+              Если забудете пароль, восстановить его можно кодом из email на странице входа.
+            </p>
             <form action={updateOwnPasswordAction} className="space-y-4">
               {user.passwordHash ? (
                 <label className="grid gap-2 text-sm text-zinc-300">
@@ -248,14 +188,16 @@ export default async function DashboardAccountPage({
               <PendingButton>Сохранить пароль</PendingButton>
             </form>
           </Card>
+        </section>
 
+        <section className="grid gap-4 lg:grid-cols-2">
           <Card className="space-y-5">
             <Badge>Telegram</Badge>
             <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
               Привязка Telegram
             </h2>
             <p className="text-sm leading-7 text-zinc-400">
-              Используйте Telegram Login Widget, чтобы привязать бот к текущему аккаунту.
+              Используйте Telegram Login Widget, чтобы привязать бота к текущему аккаунту.
             </p>
             <p className="text-sm text-zinc-300">
               Текущее состояние:{" "}
@@ -265,23 +207,23 @@ export default async function DashboardAccountPage({
             </p>
             <TelegramLogin mode="link" />
           </Card>
-        </section>
 
-        <Card>
-          <Badge>Support</Badge>
-          <div className="mt-4 flex flex-wrap gap-3">
-            {env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL ? (
-              <Link href={env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL} target="_blank" rel="noreferrer">
-                <Button>Поддержка в Telegram</Button>
-              </Link>
-            ) : null}
-            {env.SUPPORT_EMAIL ? (
-              <Link href={`mailto:${env.SUPPORT_EMAIL}`}>
-                <Button variant="ghost">{env.SUPPORT_EMAIL}</Button>
-              </Link>
-            ) : null}
-          </div>
-        </Card>
+          <Card>
+            <Badge>Support</Badge>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL ? (
+                <Link href={env.NEXT_PUBLIC_SUPPORT_TELEGRAM_URL} target="_blank" rel="noreferrer">
+                  <Button>Поддержка в Telegram</Button>
+                </Link>
+              ) : null}
+              {env.SUPPORT_EMAIL ? (
+                <Link href={`mailto:${env.SUPPORT_EMAIL}`}>
+                  <Button variant="ghost">{env.SUPPORT_EMAIL}</Button>
+                </Link>
+              ) : null}
+            </div>
+          </Card>
+        </section>
 
         <div className="flex justify-end">
           <LogoutButton />

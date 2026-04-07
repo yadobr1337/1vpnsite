@@ -96,6 +96,10 @@ export function buildLoginCodeIdentifier(email: string) {
   return `login:${normalizeEmail(email)}`;
 }
 
+export function buildPasswordResetIdentifier(email: string) {
+  return `reset-password:${normalizeEmail(email)}`;
+}
+
 export function buildEmailVerificationIdentifier(userId: string, email: string) {
   return `verify-email:${userId}:${normalizeEmail(email)}`;
 }

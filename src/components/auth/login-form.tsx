@@ -3,50 +3,19 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { TelegramLogin } from "@/components/auth/telegram-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TelegramLogin } from "@/components/auth/telegram-login";
-
-type AuthMode = "password" | "code";
 
 export function LoginForm() {
-  const [mode, setMode] = useState<AuthMode>("password");
+  const [resetMode, setResetMode] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-2 rounded-full border border-white/10 bg-white/5 p-1">
-        <button
-          type="button"
-          onClick={() => {
-            setMode("password");
-            setError(null);
-            setMessage(null);
-          }}
-          className={`h-11 rounded-full text-sm font-medium transition ${
-            mode === "password" ? "bg-cyan-400/15 text-white" : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Пароль
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setMode("code");
-            setError(null);
-            setMessage(null);
-          }}
-          className={`h-11 rounded-full text-sm font-medium transition ${
-            mode === "code" ? "bg-cyan-400/15 text-white" : "text-zinc-400 hover:text-white"
-          }`}
-        >
-          Код из email
-        </button>
-      </div>
-
-      {mode === "password" ? (
+      {!resetMode ? (
         <form
           className="space-y-4"
           onSubmit={(event) => {
@@ -65,7 +34,7 @@ export function LoginForm() {
               });
 
               if (result?.error) {
-                setError(result.error);
+                setError("Неверный email или пароль.");
                 return;
               }
 
@@ -82,6 +51,17 @@ export function LoginForm() {
             <Input name="password" type="password" placeholder="••••••••" required />
           </div>
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          <button
+            type="button"
+            onClick={() => {
+              setResetMode(true);
+              setError(null);
+              setMessage(null);
+            }}
+            className="text-sm text-cyan-300 transition hover:text-cyan-200"
+          >
+            Забыли пароль?
+          </button>
           <Button className="w-full" disabled={pending}>
             {pending ? "Вход..." : "Войти"}
           </Button>
@@ -99,20 +79,24 @@ export function LoginForm() {
               const formData = new FormData(form);
               const email = String(formData.get("email") ?? "");
               const code = String(formData.get("code") ?? "");
+              const password = String(formData.get("password") ?? "");
 
-              const result = await signIn("email-code", {
-                email,
-                code,
-                redirect: false,
-                callbackUrl: "/dashboard",
+              const response = await fetch("/api/auth/password-reset/confirm", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email, code, password }),
               });
 
-              if (result?.error) {
-                setError(result.error);
+              const payload = (await response.json()) as { error?: string };
+              if (!response.ok) {
+                setError(payload.error ?? "Не удалось обновить пароль.");
                 return;
               }
 
-              window.location.href = "/dashboard";
+              setMessage("Пароль обновлен. Теперь можно войти с новым паролем.");
+              form.reset();
             });
           }}
         >
@@ -129,9 +113,7 @@ export function LoginForm() {
               type="button"
               onClick={(event) => {
                 const form = event.currentTarget.form;
-                if (!form) {
-                  return;
-                }
+                if (!form) return;
 
                 const formData = new FormData(form);
                 const email = String(formData.get("email") ?? "").trim();
@@ -142,8 +124,9 @@ export function LoginForm() {
 
                 setError(null);
                 setMessage(null);
+
                 startTransition(async () => {
-                  const response = await fetch("/api/auth/email-code/request", {
+                  const response = await fetch("/api/auth/password-reset/request", {
                     method: "POST",
                     headers: {
                       "Content-Type": "application/json",
@@ -157,7 +140,7 @@ export function LoginForm() {
                     return;
                   }
 
-                  setMessage("Код отправлен на email.");
+                  setMessage("Код для сброса пароля отправлен на email.");
                 });
               }}
               className="mt-7 inline-flex h-12 items-center justify-center rounded-full border border-white/10 bg-white/5 px-5 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-white/10"
@@ -165,10 +148,25 @@ export function LoginForm() {
               Получить код
             </button>
           </div>
+          <div className="space-y-2">
+            <label className="text-sm text-zinc-300">Новый пароль</label>
+            <Input name="password" type="password" placeholder="Новый пароль" required />
+          </div>
           {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          <button
+            type="button"
+            onClick={() => {
+              setResetMode(false);
+              setError(null);
+              setMessage(null);
+            }}
+            className="text-sm text-zinc-400 transition hover:text-white"
+          >
+            Назад ко входу
+          </button>
           <Button className="w-full" disabled={pending}>
-            {pending ? "Проверка..." : "Войти по коду"}
+            {pending ? "Сохранение..." : "Сбросить пароль"}
           </Button>
         </form>
       )}
