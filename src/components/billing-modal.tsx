@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { PendingButton } from "@/components/ui/pending-button";
 
 type BillingModalProps = {
-  canClaimTrial: boolean;
   transactions: Array<{
     id: string;
     description: string;
@@ -14,15 +13,9 @@ type BillingModalProps = {
     createdAt: string;
   }>;
   topUpAction: (formData: FormData) => Promise<void>;
-  claimTrialAction: () => Promise<void>;
 };
 
-export function BillingModal({
-  canClaimTrial,
-  transactions,
-  topUpAction,
-  claimTrialAction,
-}: BillingModalProps) {
+export function BillingModal({ transactions, topUpAction }: BillingModalProps) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -69,43 +62,25 @@ export function BillingModal({
               </div>
 
               <div className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:grid-cols-[0.92fr_1.08fr] lg:gap-6">
-                <div className="space-y-4">
-                  <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
-                      Пополнение
-                    </p>
+                <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 sm:p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-zinc-400">
+                    Пополнение
+                  </p>
 
-                    <form action={topUpAction} className="mt-4 space-y-3">
-                      <label className="block text-sm text-zinc-300">
-                        Сумма пополнения
-                        <input
-                          className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-white outline-none transition focus:border-cyan-300/40"
-                          defaultValue="199"
-                          min="10"
-                          name="amount"
-                          step="1"
-                          type="number"
-                        />
-                      </label>
-                      <PendingButton className="w-full">Пополнить баланс</PendingButton>
-                    </form>
-                  </div>
-
-                  {canClaimTrial ? (
-                    <div className="rounded-[26px] border border-cyan-300/15 bg-cyan-400/[0.05] p-4 sm:p-5">
-                      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-200">
-                        Бонус
-                      </p>
-                      <p className="mt-3 text-sm leading-6 text-zinc-300">
-                        Один раз можно активировать пробный день прямо из этого окна.
-                      </p>
-                      <form action={claimTrialAction} className="mt-4">
-                        <PendingButton className="w-full" variant="ghost">
-                          Получить пробный день
-                        </PendingButton>
-                      </form>
-                    </div>
-                  ) : null}
+                  <form action={topUpAction} className="mt-4 space-y-3">
+                    <label className="block text-sm text-zinc-300">
+                      Сумма пополнения
+                      <input
+                        className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-white outline-none transition focus:border-cyan-300/40"
+                        defaultValue="199"
+                        min="10"
+                        name="amount"
+                        step="1"
+                        type="number"
+                      />
+                    </label>
+                    <PendingButton className="w-full">Пополнить баланс</PendingButton>
+                  </form>
                 </div>
 
                 <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 sm:p-5">

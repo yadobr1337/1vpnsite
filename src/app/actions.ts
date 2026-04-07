@@ -104,6 +104,16 @@ export async function topUpBalanceAction(formData: FormData) {
 
 export async function claimTrialAction() {
   const session = await requireUser();
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: { telegramId: true },
+  });
+
+  if (!user?.telegramId) {
+    throw new Error("Telegram must be linked before claiming the trial.");
+  }
+
   await claimTrialDay(session.user.id);
   revalidatePath("/dashboard");
   revalidatePath("/admin");

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { CopyButton } from "@/components/copy-button";
 import { DeviceStepperForm } from "@/components/device-stepper-form";
 import { BillingModal } from "@/components/billing-modal";
+import { PendingButton } from "@/components/ui/pending-button";
 import {
   claimTrialAction,
   deleteOwnHwidDeviceAction,
@@ -58,6 +59,7 @@ export default async function DashboardPage() {
 
   const devices = await getRemoteUserDevices(overview.user.remnawaveUserUuid);
   const canClaimTrial = !overview.user.trialClaimedAt;
+  const hasLinkedTelegram = Boolean(overview.user.telegramId);
   const hasRealEmail = !overview.user.isEmailPlaceholder;
   const emailNeedsVerification = Boolean(
     overview.user.pendingEmail || (hasRealEmail && !overview.user.emailVerified),
@@ -185,9 +187,7 @@ export default async function DashboardPage() {
                 </p>
               </div>
               <BillingModal
-                canClaimTrial={canClaimTrial}
                 topUpAction={topUpBalanceAction}
-                claimTrialAction={claimTrialAction}
                 transactions={transactions.map((transaction) => ({
                   id: transaction.id,
                   description: transaction.description,
@@ -250,6 +250,34 @@ export default async function DashboardPage() {
             </div>
           </Card>
         </section>
+
+        {canClaimTrial ? (
+          <section>
+            <Card className="space-y-5">
+              <Badge>Бонус</Badge>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold uppercase tracking-[0.08em] text-white">
+                    Пробный день
+                  </h2>
+                  <p className="mt-2 text-sm leading-7 text-zinc-400">
+                    Один раз можно получить баланс на 1 день. Для активации нужно привязать Telegram.
+                  </p>
+                </div>
+
+                {hasLinkedTelegram ? (
+                  <form action={claimTrialAction}>
+                    <PendingButton>Получить пробный день</PendingButton>
+                  </form>
+                ) : (
+                  <Link href="/dashboard/account">
+                    <Button>Привязать Telegram</Button>
+                  </Link>
+                )}
+              </div>
+            </Card>
+          </section>
+        ) : null}
 
         <section className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           <Card>
